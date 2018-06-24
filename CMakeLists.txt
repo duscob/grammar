@@ -16,7 +16,7 @@ set(CMAKE_MODULE_PATH
 include(ConfigSafeGuards)
 
 
-#Global Setup
+# Global Setup
 set(CMAKE_CXX_STANDARD 14)
 
 
@@ -24,6 +24,24 @@ set(CMAKE_CXX_STANDARD 14)
 set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
 
 include_directories(${COMMON_INCLUDES})
+
+
+# Library Setup
+set(SOURCE_FILES include/grammar/re_pair.h
+        src/re_pair.cpp
+        src/repair/basics.h
+        src/repair/basics.cpp
+        src/repair/array.h
+        src/repair/array.cpp
+        src/repair/records.h
+        src/repair/records.cpp
+        src/repair/heap.h
+        src/repair/heap.cpp
+        src/repair/hash.h
+        src/repair/hash.cpp)
+
+add_library(grammar ${SOURCE_FILES})
+target_link_libraries(grammar)
 
 
 # Define helper functions and macros used.
@@ -34,4 +52,6 @@ if (grammar_build_tests)
     enable_testing()
 
     include(ConfigGTest)
+
+    cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;grammar" "" test/re_pair_test.cpp)
 endif ()
