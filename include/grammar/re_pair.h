@@ -16,7 +16,7 @@ namespace grammar {
 class RePairEncoder {
  public:
   template<typename II, typename Output>
-  void encode(II _begin, II _end, Output _output) {
+  void encode(II _begin, II _end, Output &_output) {
     auto length = std::distance(_begin, _end);
     auto C = (int *) malloc(length * sizeof(int));
     {

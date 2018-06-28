@@ -38,7 +38,8 @@ set(SOURCE_FILES include/grammar/re_pair.h
         src/repair/heap.h
         src/repair/heap.cpp
         src/repair/hash.h
-        src/repair/hash.cpp)
+        src/repair/hash.cpp
+        include/grammar/complete_tree.h)
 
 add_library(grammar ${SOURCE_FILES})
 target_link_libraries(grammar)
@@ -54,4 +55,6 @@ if (grammar_build_tests)
     include(ConfigGTest)
 
     cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;grammar" "" test/re_pair_test.cpp)
+
+    cxx_test_with_flags_and_args(complete_tree_test "" "gtest;gtest_main;grammar" "" test/complete_tree_test.cpp)
 endif ()
