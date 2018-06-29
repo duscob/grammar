@@ -3,6 +3,7 @@
 //
 
 #include <vector>
+
 #include "grammar/re_pair.h"
 
 #include "repair/basics.h"
@@ -197,6 +198,7 @@ int grammar::RePairEncoder::repair(int C[], std::size_t, std::function<void(int,
     data_->n++;
     purgeHeap(&data_->Heap); // remove freq 1 from heap
     if (data_->c < data_->factor * data_->u) // compact C
+      //todo compact one time at the end
     {
       int i, ni;
       i = 0;
@@ -219,5 +221,12 @@ int grammar::RePairEncoder::repair(int C[], std::size_t, std::function<void(int,
     }
   }
   return 0;
+}
+
+
+void grammar::RePairEncoder::destroy() {
+  free(data_->L);
+  destroyHeap(&data_->Heap);
+  destroyHash(&data_->Hash);
 }
 

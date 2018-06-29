@@ -32,11 +32,15 @@ class RePairEncoder {
 
     prepare(C, length);
     repair(C, length, writer);
+
+    destroy();
+    free(C);
   }
 
  protected:
   void prepare(int [], std::size_t);
   int repair(int [], std::size_t, std::function<void(int, int, int)>);
+  void destroy();
 
  private:
   struct InternalData;
