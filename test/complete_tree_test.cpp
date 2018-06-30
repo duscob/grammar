@@ -38,7 +38,8 @@ TEST_P(CompleteTreeTF, construct) {
   std::vector<std::pair<int, int>> result;
   SimpleWrapper out(result);
 
-  grammar::BalanceTreeByWeight(leaves.begin(), leaves.end(), out, GetSameValue());
+  grammar::BalanceTreeByWeight balancer;
+  balancer(leaves.begin(), leaves.end(), out, GetSameValue());
 
   EXPECT_EQ(result, std::get<1>(GetParam()));
 }
