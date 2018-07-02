@@ -13,7 +13,7 @@
 #include "repair/hash.h"
 
 
-struct grammar::RePairEncoder::InternalData {
+struct grammar::RePairBasicEncoder::InternalData {
   int u;  // |text| and later current |C| with gaps
   int c;  // real |C|
   int alph; // max used terminal symbol
@@ -28,7 +28,7 @@ struct grammar::RePairEncoder::InternalData {
 };
 
 
-void grammar::RePairEncoder::prepare(int C[], std::size_t len) {
+void grammar::RePairBasicEncoder::prepare(int C[], std::size_t len) {
   data_.reset(new InternalData);
 
   int i, id;
@@ -65,14 +65,14 @@ void grammar::RePairEncoder::prepare(int C[], std::size_t len) {
 }
 
 
-int grammar::RePairEncoder::repair(int C[], std::size_t, std::function<void(int, int, int)> _writer) {
+int grammar::RePairBasicEncoder::repair(int C[], std::size_t, std::function<void(int, int, int)> _writer) {
   int oid, id, cpos;
   Trecord *rec, *orec;
   Tpair pair;
 //  if (fwrite(&alph,sizeof(int),1,R) != 1) return -1;
 //  if (PRNC) prnC();
 
-  std::vector<int> lengths;
+//  std::vector<int> lengths;
   while (data_->n + 1 > 0) {
 //    if (PRNR) prnRec();
     oid = extractMax(&data_->Heap);
@@ -82,15 +82,16 @@ int grammar::RePairEncoder::repair(int C[], std::size_t, std::function<void(int,
 
 
     // Adding a new rule to the output
-    int lrule = 0;
-    if (orec->pair.left < data_->alph) lrule++;
-    else lrule += lengths[orec->pair.left - data_->alph];
-
-    if (orec->pair.right < data_->alph) lrule++;
-    else lrule += lengths[orec->pair.right - data_->alph];
+    int lrule = get_rule_span_length(orec->pair.left) + get_rule_span_length(orec->pair.right);
+//    if (orec->pair.left < data_->alph) lrule++;
+//    else lrule += lengths[orec->pair.left - data_->alph];
+//
+//    if (orec->pair.right < data_->alph) lrule++;
+//    else lrule += lengths[orec->pair.right - data_->alph];
 
     _writer(orec->pair.left, orec->pair.right, lrule);
-    lengths.push_back(lrule);
+    rules_span_length_.push_back(lrule);
+    rules_height_.push_back(std::max(get_rule_height(orec->pair.left), get_rule_height(orec->pair.right)) + 1);
 
 
 //    if (fwrite (&orec->pair,sizeof(Tpair),1,R) != 1) return -1;
@@ -220,13 +221,35 @@ int grammar::RePairEncoder::repair(int C[], std::size_t, std::function<void(int,
       assocRecords(&data_->Rec, &data_->Hash, &data_->Heap, data_->L);
     }
   }
-  return 0;
+
+  for (int i = 0, j = 0; i < data_->c; ++i) {
+    C[i] = C[j];
+    ++j;
+    if (C[j] < 0) j = -C[j] - 1;
+  }
+  data_->u = data_->c;
+  C = (int *) realloc (C, data_->c * sizeof(int));
+
+  return data_->u;
 }
 
 
-void grammar::RePairEncoder::destroy() {
+void grammar::RePairBasicEncoder::destroy() {
   free(data_->L);
   destroyHeap(&data_->Heap);
   destroyHash(&data_->Hash);
+
+  rules_span_length_.clear();
+  rules_height_.clear();
+}
+
+
+int grammar::RePairBasicEncoder::get_rule_span_length(int _rule) {
+  return (_rule < data_->alph) ? 1 : rules_span_length_[_rule - data_->alph];
+}
+
+
+int grammar::RePairBasicEncoder::get_rule_height(int _rule) {
+  return (_rule < data_->alph) ? 0 : rules_height_[_rule - data_->alph];
 }
 
