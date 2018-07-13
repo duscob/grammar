@@ -1,9 +1,17 @@
+########################################################################
+# CMake build script for Grammar Library.
+
 option(grammar_build_tests "Build all of grammar's tests." ON)
+
+option(grammar_install "Enable installation of grammar. (Projects embedding grammar may want to turn this OFF.)" ON)
 
 
 cmake_minimum_required(VERSION 2.8)
 
-##Project Information
+
+########################################################################
+#
+# Project-wide settings
 project(grammar CXX C)
 
 
@@ -26,7 +34,9 @@ set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
 include_directories(${COMMON_INCLUDES})
 
 
-# Library Setup
+########################################################################
+#
+# Grammar library
 set(SOURCE_FILES include/grammar/re_pair.h
         src/re_pair.cpp
         src/repair/basics.h
@@ -44,6 +54,32 @@ set(SOURCE_FILES include/grammar/re_pair.h
 add_library(grammar ${SOURCE_FILES})
 target_link_libraries(grammar)
 
+
+########################################################################
+#
+# Install rules
+if (grammar_install)
+    if (CMAKE_VERSION VERSION_LESS 2.8.5)
+        set(CMAKE_INSTALL_BINDIR "bin" CACHE STRING "User executables (bin)")
+        set(CMAKE_INSTALL_LIBDIR "lib${LIB_SUFFIX}" CACHE STRING "Object code libraries (lib)")
+        set(CMAKE_INSTALL_INCLUDEDIR "include" CACHE STRING "C header files (include)")
+        mark_as_advanced(CMAKE_INSTALL_BINDIR CMAKE_INSTALL_LIBDIR CMAKE_INSTALL_INCLUDEDIR)
+    else()
+        include(GNUInstallDirs)
+    endif()
+
+    install(TARGETS grammar
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+    install(DIRECTORY "${grammar_SOURCE_DIR}/include/grammar"
+            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+endif ()
+
+
+########################################################################
+#
+# Grammar's own tests.
 
 # Define helper functions and macros used.
 include(cmake/internal_utils.cmake)
