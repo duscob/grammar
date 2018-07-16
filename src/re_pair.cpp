@@ -244,12 +244,17 @@ void grammar::RePairBasicEncoder::destroy() {
 }
 
 
-int grammar::RePairBasicEncoder::get_rule_span_length(int _rule) {
+int grammar::RePairBasicEncoder::get_rule_span_length(int _rule) const {
   return (_rule < data_->alph) ? 1 : rules_span_length_[_rule - data_->alph];
 }
 
 
-int grammar::RePairBasicEncoder::get_rule_height(int _rule) {
+int grammar::RePairBasicEncoder::get_rule_height(int _rule) const {
   return (_rule < data_->alph) ? 0 : rules_height_[_rule - data_->alph];
+}
+
+
+int grammar::RePairBasicEncoder::sigma() const {
+  return data_->alph - 1;
 }
 

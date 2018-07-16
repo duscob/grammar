@@ -55,6 +55,10 @@ class RePairBasicEncoder {
     };
 
     prepare(C, length);
+
+    // Report the alphabet size (== sigma)
+    _report_rule(sigma());
+
     length = repair(C, length, reporter);
 
     _handle_c_seq(C, length);
@@ -71,8 +75,10 @@ class RePairBasicEncoder {
   int repair(int [], std::size_t, std::function<void(int, int, int)>);
   void destroy();
 
-  int get_rule_span_length(int _rule);
-  int get_rule_height(int _rule);
+  int get_rule_span_length(int _rule) const;
+  int get_rule_height(int _rule) const;
+
+  int sigma() const;
 
  private:
   struct InternalData;
