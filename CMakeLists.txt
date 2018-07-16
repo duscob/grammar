@@ -50,7 +50,8 @@ set(SOURCE_FILES include/grammar/re_pair.h
         src/repair/hash.h
         src/repair/hash.cpp
         include/grammar/complete_tree.h
-        include/grammar/slp.h)
+        include/grammar/slp.h
+        src/slp.cpp)
 
 add_library(grammar ${SOURCE_FILES})
 target_link_libraries(grammar)

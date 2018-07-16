@@ -6,42 +6,32 @@
 #define GRAMMAR_SLP_H
 
 #include <vector>
+#include <utility>
 
 
 namespace grammar {
 
 class SLP {
  public:
-  SLP(std::size_t sigma) : sigma_(sigma) {}
+  SLP(std::size_t sigma);
 
-  std::size_t SigmaSize() {
-    return sigma_;
-  }
+  std::size_t SigmaSize();
 
+  std::size_t AddRule(std::size_t left, std::size_t right, std::size_t span_length = 0);
 
-  std::size_t AddRule(std::size_t left, std::size_t right) {
-    assert(left <= sigma_ + rules_.size() && right <= sigma_ + rules_.size());
-    rules_.emplace_back(left, right);
+  std::size_t Start();
 
-    return sigma_ + rules_.size();
-  }
+  std::pair<std::size_t, std::size_t> operator[](std::size_t i);
 
+  bool IsTerminal(std::size_t i);
 
-  std::size_t Start() {
-    return sigma_ + rules_.size();
-  }
+  std::vector<std::size_t> Span(std::size_t i);
 
-
-  std::pair<std::size_t, std::size_t> operator[](std::size_t i) {
-    if (i <= sigma_)
-      return std::make_pair(i, std::numeric_limits<std::size_t>::max());
-    else
-      return rules_.at(i - sigma_ - 1);
-  }
+  std::size_t SpanLength(std::size_t i);
 
  protected:
   std::size_t sigma_;
-  std::vector<std::pair<int, int>> rules_;
+  std::vector<std::pair<std::pair<std::size_t, std::size_t>, std::size_t>> rules_;
 };
 
 }
