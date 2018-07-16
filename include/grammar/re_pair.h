@@ -27,8 +27,8 @@ class RePairEncoder;
 class RePairBasicEncoder {
  public:
   /**
-   * Takes a sequence of integers and build a grammar to represent it using RePair algorithm. The rules are reported
-   * using _report_rules.
+   * Takes a sequence of symbols (integers) and builds a grammar to represent it using RePair algorithm. The alphabet
+   * is considered a set of consecutive integers [1..sigma]. The rules are reported using _report_rules.
    *
    * @tparam II Input iterator
    * @tparam ReportRule Rules reporter
@@ -90,8 +90,9 @@ template<>
 class RePairEncoder<false> : public RePairBasicEncoder {
  public:
   /**
-   * Takes a sequence of integers and build a grammar to represent it using RePair algorithm. The rules are reported
-   * using _report_rules. The final compact sequence is reported using _report_c_seq.
+   * Takes a sequence of symbols (integers) and builds a grammar to represent it using RePair algorithm. The alphabet
+   * is considered a set of consecutive integers [1..sigma]. The rules are reported using _report_rules. The final
+   * compact sequence is reported using _report_c_seq.
    *
    * @tparam II Input iterator
    * @tparam ReportRule Rules reporter
@@ -124,8 +125,9 @@ template<>
 class RePairEncoder<true> : public RePairBasicEncoder {
  public:
   /**
-   * Takes a sequence of integers and build a grammar to represent it using RePair algorithm. The rules are reported
-   * using _report_rules. The grammar is in Chomsky Normal Form.
+   * Takes a sequence of symbols (integers) and builds a grammar to represent it using RePair algorithm. The alphabet
+   * is considered a set of consecutive integers [1..sigma]. The rules are reported using _report_rules. The grammar
+   * will be in Chomsky Normal Form.
    *
    * @tparam II Input iterator
    * @tparam ReportRule Rules reporter
