@@ -11,7 +11,7 @@
 grammar::SLP::SLP(std::size_t sigma) : sigma_(sigma) {}
 
 
-std::size_t grammar::SLP::SigmaSize() {
+std::size_t grammar::SLP::Sigma() const {
   return sigma_;
 }
 
@@ -33,11 +33,8 @@ std::size_t grammar::SLP::Start() {
 }
 
 
-std::pair<std::size_t, std::size_t> grammar::SLP::operator[](std::size_t i) {
-  if (i <= sigma_)
-    return std::make_pair(i, std::numeric_limits<std::size_t>::max());
-  else
-    return rules_.at(i - sigma_ - 1).first;
+const std::pair<std::size_t, std::size_t> &grammar::SLP::operator[](std::size_t i) {
+  return rules_.at(i - sigma_ - 1).first;
 }
 
 
@@ -63,4 +60,17 @@ std::size_t grammar::SLP::SpanLength(std::size_t i) {
     return 1;
   else
     return rules_.at(i - sigma_ - 1).second;
+}
+
+
+grammar::SLPWrapper::SLPWrapper(grammar::SLP &slp) : slp_{slp} {}
+
+
+void grammar::SLPWrapper::operator()(int sigma) {
+  slp_ = grammar::SLP(sigma);
+}
+
+
+void grammar::SLPWrapper::operator()(int left, int right, int length) {
+  slp_.AddRule(left, right, length);
 }

@@ -45,7 +45,7 @@ TEST_P(SLP_TF, Sigma) {
   auto sigma = std::get<0>(GetParam());
   grammar::SLP slp(sigma);
 
-  EXPECT_EQ(slp.SigmaSize(), sigma);
+  EXPECT_EQ(slp.Sigma(), sigma);
 }
 
 
@@ -75,7 +75,7 @@ TEST_P(SLP_TF, Access) {
   }
 
   for (std::size_t i = 1; i <= sigma; ++i) {
-    EXPECT_EQ(slp_[i], std::make_pair(i, std::numeric_limits<std::size_t>::max()));
+    EXPECT_ANY_THROW(slp_[i]);
   }
 
   EXPECT_ANY_THROW(slp_[sigma + rules.size() + 1]);
@@ -98,25 +98,25 @@ TEST_P(SLP_TF, Span) {
   auto &sigma = std::get<0>(GetParam());
   auto &rules = std::get<1>(GetParam());
 
-  std::vector<std::vector<std::size_t>> expansions(sigma + rules.size() + 1);
+  std::vector<std::vector<std::size_t>> spans(sigma + rules.size() + 1);
   auto i = 0ul;
   for (; i <= sigma; ++i) {
-    expansions[i].push_back(i);
+    spans[i].push_back(i);
   }
 
   for (auto &&rule : rules) {
-    expansions[i].insert(expansions[i].end(),
-                         expansions[rule.second.first].begin(),
-                         expansions[rule.second.first].end());
-    expansions[i].insert(expansions[i].end(),
-                         expansions[rule.second.second].begin(),
-                         expansions[rule.second.second].end());
+    spans[i].insert(spans[i].end(),
+                         spans[rule.second.first].begin(),
+                         spans[rule.second.first].end());
+    spans[i].insert(spans[i].end(),
+                         spans[rule.second.second].begin(),
+                         spans[rule.second.second].end());
     ++i;
   }
 
-  for (int j = 1; j < expansions.size(); ++j) {
-//    std::cout << testing::PrintToString(expansions[j]) << std::endl;
-    EXPECT_EQ(slp_.Span(j), expansions[j]);
+  for (int j = 1; j < spans.size(); ++j) {
+//    std::cout << testing::PrintToString(spans[j]) << std::endl;
+    EXPECT_EQ(slp_.Span(j), spans[j]);
   }
 }
 
