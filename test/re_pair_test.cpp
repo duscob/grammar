@@ -119,6 +119,23 @@ TEST_P(RePairEncoderInChomskyNFTF, encode) {
 }
 
 
+TEST_P(RePairEncoderInChomskyNFTF, encode_slp) {
+  grammar::SLP slp(0);
+  grammar::SLPWrapper report_rules(slp);
+
+  grammar::RePairEncoder<true> encoder;
+  encoder.Encode(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end(), report_rules);
+  EXPECT_EQ(slp.Sigma(), *std::max_element(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end()));
+
+  auto &rules = std::get<1>(GetParam());
+  for (int i = 0; i < rules.size(); ++i) {
+    EXPECT_EQ(slp[slp.Sigma() + i + 1].first, rules[i].left);
+    EXPECT_EQ(slp[slp.Sigma() + i + 1].second, rules[i].right);
+    EXPECT_EQ(slp.SpanLength(slp.Sigma() + i + 1), rules[i].length);
+  }
+}
+
+
 INSTANTIATE_TEST_CASE_P(RePairEncoder,
                         RePairEncoderInChomskyNFTF,
                         ::testing::Values(
