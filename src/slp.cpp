@@ -33,22 +33,22 @@ std::size_t grammar::SLP::Variables() const {
 }
 
 
-std::size_t grammar::SLP::Start() {
+std::size_t grammar::SLP::Start() const {
   return sigma_ + rules_.size();
 }
 
 
-const std::pair<std::size_t, std::size_t> &grammar::SLP::operator[](std::size_t i) {
+const std::pair<std::size_t, std::size_t> &grammar::SLP::operator[](std::size_t i) const {
   return rules_.at(i - sigma_ - 1).first;
 }
 
 
-bool grammar::SLP::IsTerminal(std::size_t i) {
+bool grammar::SLP::IsTerminal(std::size_t i) const {
   return i <= sigma_;
 }
 
 
-std::vector<std::size_t> grammar::SLP::Span(std::size_t i) {
+std::vector<std::size_t> grammar::SLP::Span(std::size_t i) const {
   if (IsTerminal(i))
     return {i};
 
@@ -60,7 +60,7 @@ std::vector<std::size_t> grammar::SLP::Span(std::size_t i) {
 }
 
 
-std::size_t grammar::SLP::SpanLength(std::size_t i) {
+std::size_t grammar::SLP::SpanLength(std::size_t i) const {
   if (i <= sigma_)
     return 1;
   else

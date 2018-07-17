@@ -56,7 +56,7 @@ class SLP {
    *
    * @return start rule
    */
-  std::size_t Start();
+  std::size_t Start() const;
 
   /**
    * Get left-hand of rule i
@@ -65,7 +65,7 @@ class SLP {
    *
    * @return left-hand of the rule [left, right]
    */
-  const std::pair<std::size_t, std::size_t> &operator[](std::size_t i);
+  const std::pair<std::size_t, std::size_t> &operator[](std::size_t i) const;
 
   /**
    * Is i a terminal symbol?
@@ -74,7 +74,7 @@ class SLP {
    *
    * @return true if i is terminal symbol
    */
-  bool IsTerminal(std::size_t i);
+  bool IsTerminal(std::size_t i) const;
 
   /**
    * Get span of rule i
@@ -83,7 +83,7 @@ class SLP {
    *
    * @return sequence equal to span of rule i
    */
-  std::vector<std::size_t> Span(std::size_t i);
+  std::vector<std::size_t> Span(std::size_t i) const;
 
   /**
    * Get span length of rule i in terminal symbols.
@@ -92,7 +92,7 @@ class SLP {
    *
    * @return span length
    */
-  std::size_t SpanLength(std::size_t i);
+  std::size_t SpanLength(std::size_t i) const;
 
  protected:
   std::size_t sigma_;
