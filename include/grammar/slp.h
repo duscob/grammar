@@ -45,6 +45,13 @@ class SLP {
   std::size_t AddRule(std::size_t left, std::size_t right, std::size_t span_length = 0);
 
   /**
+   * Get number of variables == sigma + number of rules
+   *
+   * @return number of variables
+   */
+  std::size_t Variables() const;
+
+  /**
    * Get start/initial rule
    *
    * @return start rule

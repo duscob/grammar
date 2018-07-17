@@ -28,6 +28,11 @@ std::size_t grammar::SLP::AddRule(std::size_t left, std::size_t right, std::size
 }
 
 
+std::size_t grammar::SLP::Variables() const {
+  return sigma_ + rules_.size();
+}
+
+
 std::size_t grammar::SLP::Start() {
   return sigma_ + rules_.size();
 }

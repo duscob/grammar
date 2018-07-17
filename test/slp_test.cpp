@@ -59,6 +59,8 @@ TEST_P(SLP_TF, AddRules) {
   for (auto &&rule : rules) {
     EXPECT_EQ(slp.AddRule(rule.second.first, rule.second.second), rule.first);
   }
+
+  EXPECT_EQ(slp.Variables(), sigma + rules.size());
 }
 
 
