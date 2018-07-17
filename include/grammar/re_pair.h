@@ -27,8 +27,8 @@ class RePairEncoder;
 class RePairBasicEncoder {
  public:
   /**
-   * Takes a sequence of integers and build a grammar to represent it using RePair algorithm. The rules are reported
-   * using _report_rules.
+   * Takes a sequence of symbols (integers) and builds a grammar to represent it using RePair algorithm. The alphabet
+   * is considered a set of consecutive integers [1..sigma]. The rules are reported using _report_rules.
    *
    * @tparam II Input iterator
    * @tparam ReportRule Rules reporter
@@ -55,6 +55,10 @@ class RePairBasicEncoder {
     };
 
     prepare(C, length);
+
+    // Report the alphabet size (== sigma)
+    _report_rule(sigma());
+
     length = repair(C, length, reporter);
 
     _handle_c_seq(C, length);
@@ -71,8 +75,10 @@ class RePairBasicEncoder {
   int repair(int [], std::size_t, std::function<void(int, int, int)>);
   void destroy();
 
-  int get_rule_span_length(int _rule);
-  int get_rule_height(int _rule);
+  int get_rule_span_length(int _rule) const;
+  int get_rule_height(int _rule) const;
+
+  int sigma() const;
 
  private:
   struct InternalData;
@@ -90,8 +96,9 @@ template<>
 class RePairEncoder<false> : public RePairBasicEncoder {
  public:
   /**
-   * Takes a sequence of integers and build a grammar to represent it using RePair algorithm. The rules are reported
-   * using _report_rules. The final compact sequence is reported using _report_c_seq.
+   * Takes a sequence of symbols (integers) and builds a grammar to represent it using RePair algorithm. The alphabet
+   * is considered a set of consecutive integers [1..sigma]. The rules are reported using _report_rules. The final
+   * compact sequence is reported using _report_c_seq.
    *
    * @tparam II Input iterator
    * @tparam ReportRule Rules reporter
@@ -124,8 +131,9 @@ template<>
 class RePairEncoder<true> : public RePairBasicEncoder {
  public:
   /**
-   * Takes a sequence of integers and build a grammar to represent it using RePair algorithm. The rules are reported
-   * using _report_rules. The grammar is in Chomsky Normal Form.
+   * Takes a sequence of symbols (integers) and builds a grammar to represent it using RePair algorithm. The alphabet
+   * is considered a set of consecutive integers [1..sigma]. The rules are reported using _report_rules. The grammar
+   * will be in Chomsky Normal Form.
    *
    * @tparam II Input iterator
    * @tparam ReportRule Rules reporter
