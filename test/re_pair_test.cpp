@@ -14,6 +14,11 @@ struct NonTerminal {
   int length;
 };
 
+void PrintTo(const NonTerminal& nt, ::std::ostream* os) {
+  *os << "{" << nt.left << "; " << nt.right << "}:" << nt.length;
+}
+
+
 
 bool operator==(const NonTerminal &_nt1, const NonTerminal &_nt2) {
   return _nt1.left == _nt2.left && _nt1.right == _nt2.right && _nt1.length == _nt2.length;
@@ -157,7 +162,10 @@ INSTANTIATE_TEST_CASE_P(RePairEncoder,
                                                                       {20, 21, 4}, {22, 23, 8}, {24, 25, 8},
                                                                       {26, 27, 16}})),
                             std::make_tuple(std::vector<int>({8, 3, 6, 8, 3}),
-                                            std::vector<NonTerminal>({{8, 3, 2}, {9, 6, 3}, {10, 9, 5}}))
+                                            std::vector<NonTerminal>({{8, 3, 2}, {9, 6, 3}, {10, 9, 5}})),
+                            std::make_tuple(std::vector<int>({1, 2, 3, 1, 2, 2, 1, 1, 1, 1}),
+                                            std::vector<NonTerminal>({{1, 1, 2}, {1, 2, 2}, {5, 3, 3}, {5, 2, 3},
+                                                                      {4, 4, 4}, {6, 7, 6}, {9, 8, 10}}))
                         )
 );
 
