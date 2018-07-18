@@ -94,6 +94,13 @@ class SLP {
    */
   std::size_t SpanLength(std::size_t i) const;
 
+  /**
+   * Reset
+   *
+   * @param sigma Size of alphabet == last symbol of alphabet
+   */
+  void Reset(std::size_t sigma);
+
  protected:
   std::size_t sigma_;
   std::vector<std::pair<std::pair<std::size_t, std::size_t>, std::size_t>> rules_;
@@ -110,6 +117,17 @@ class SLPWrapper {
 
  private:
   SLP &slp_;
+};
+
+
+template<typename _Metadata>
+class SLPWithMetadata : public SLP {
+ public:
+  template <typename _Data>
+  SLPWithMetadata(_Data data): SLP(data), metadata_(*this) {}
+
+ private:
+  _Metadata metadata_;
 };
 
 }

@@ -68,6 +68,12 @@ std::size_t grammar::SLP::SpanLength(std::size_t i) const {
 }
 
 
+void grammar::SLP::Reset(std::size_t sigma) {
+  sigma_ = sigma;
+  rules_.clear();
+}
+
+
 grammar::SLPWrapper::SLPWrapper(grammar::SLP &slp) : slp_{slp} {}
 
 
