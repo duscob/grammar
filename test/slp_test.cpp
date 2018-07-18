@@ -33,7 +33,6 @@ class SLP_TF : public ::testing::TestWithParam<std::tuple<std::size_t,
 
     slp_ = grammar::SLP(sigma);
 
-    // Check rule addition
     for (auto &&rule : rules) {
       slp_.AddRule(rule.second.first, rule.second.second), rule.first;
     }
@@ -59,6 +58,8 @@ TEST_P(SLP_TF, AddRules) {
   for (auto &&rule : rules) {
     EXPECT_EQ(slp.AddRule(rule.second.first, rule.second.second), rule.first);
   }
+
+  EXPECT_EQ(slp.Variables(), sigma + rules.size());
 }
 
 
