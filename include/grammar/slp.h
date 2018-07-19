@@ -94,22 +94,78 @@ class SLP {
    */
   std::size_t SpanLength(std::size_t i) const;
 
+  /**
+   * Reset
+   *
+   * @param sigma Size of alphabet == last symbol of alphabet
+   */
+  void Reset(std::size_t sigma);
+
  protected:
   std::size_t sigma_;
   std::vector<std::pair<std::pair<std::size_t, std::size_t>, std::size_t>> rules_;
 };
 
 
+template<typename _SLP>
 class SLPWrapper {
  public:
-  SLPWrapper(SLP &slp);
+  SLPWrapper(_SLP &slp) : slp_{slp} {}
 
-  void operator()(int sigma);
+  void operator()(int sigma) {
+    slp_.Reset(sigma);
+  }
 
-  void operator()(int left, int right, int length);
+  void operator()(int left, int right, int length) {
+    slp_.AddRule(left, right, length);
+  }
 
  private:
-  SLP &slp_;
+  _SLP &slp_;
+};
+
+
+template<typename _SLP>
+SLPWrapper<_SLP> BuildSLPWrapper(_SLP &slp) {
+  return SLPWrapper<_SLP>(slp);
+}
+
+
+/**
+ * Straight-Line Program With Metadata
+ *
+ * This data structure represent, roughly, a Context-Free Grammar in Chomsky Normal Form, where all non-terminals
+ * appears at left hand of a unique rule. Represent also some metadata associated to the variables of SLP.
+ *
+ * @tparam _Metadata
+ */
+template<typename _Metadata>
+class SLPWithMetadata : public SLP {
+ public:
+  template<typename _Data>
+  SLPWithMetadata(_Data data): SLP(data) {}
+
+  /**
+   * Compute the metadata. This methods must be called before GetData.
+   */
+  void ComputeMetadata() {
+    metadata_.Compute(*this);
+  }
+
+  /**
+   * Get metadata associated to variable i
+   *
+   * @param i
+   *
+   * @return metadata
+   */
+  auto GetData(std::size_t i) {
+    // todo verify ComputeMetadata was called before
+    return metadata_[i];
+  }
+
+ private:
+  _Metadata metadata_;
 };
 
 }

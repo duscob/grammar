@@ -68,14 +68,8 @@ std::size_t grammar::SLP::SpanLength(std::size_t i) const {
 }
 
 
-grammar::SLPWrapper::SLPWrapper(grammar::SLP &slp) : slp_{slp} {}
-
-
-void grammar::SLPWrapper::operator()(int sigma) {
-  slp_ = grammar::SLP(sigma);
+void grammar::SLP::Reset(std::size_t sigma) {
+  sigma_ = sigma;
+  rules_.clear();
 }
 
-
-void grammar::SLPWrapper::operator()(int left, int right, int length) {
-  slp_.AddRule(left, right, length);
-}

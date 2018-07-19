@@ -7,8 +7,10 @@
 #include "grammar/slp.h"
 #include "grammar/slp_metadata.h"
 
+
 using RightHand = std::pair<std::size_t, std::size_t>;
 using Rules = std::vector<RightHand>;
+
 
 class SLPMD_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules>> {
  protected:
@@ -28,7 +30,23 @@ class SLPMD_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules>>
 };
 
 
-TEST_P(SLPMD_TF, PTS) {
+TEST_P(SLPMD_TF, PTSCompute) {
+  grammar::PTS pts;
+  pts.Compute(slp_);
+
+  for (auto i = 1ul; i <= slp_.Variables(); ++i) {
+    auto span = slp_.Span(i);
+//    std::cout << "+" << testing::PrintToString(span) << std::endl;
+    sort(span.begin(), span.end());
+    span.erase(unique(span.begin(), span.end()), span.end());
+//    std::cout << "-" << testing::PrintToString(span) << std::endl;
+//    std::cout << "*" << testing::PrintToString(pts[i]) << std::endl;
+
+    EXPECT_EQ(pts[i], span);
+  }
+}
+
+TEST_P(SLPMD_TF, PTSConstructor) {
   grammar::PTS pts(slp_);
 
   for (auto i = 1ul; i <= slp_.Variables(); ++i) {
@@ -44,11 +62,12 @@ TEST_P(SLPMD_TF, PTS) {
 }
 
 
-INSTANTIATE_TEST_CASE_P(SLPMetadata,
-                        SLPMD_TF,
-                        ::testing::Values(
-                            std::make_tuple(4ul, Rules{{1, 2}, {3, 4}, {5, 6}, {7, 7}}),
-                            std::make_tuple(3ul, Rules{{1, 2}, {4, 3}, {5, 4}}),
-                            std::make_tuple(3ul, Rules{{1, 1}, {1, 2}, {5, 3}, {5, 2}, {4, 4}, {6, 7}, {9, 8}})
-                        )
+INSTANTIATE_TEST_CASE_P(
+    SLPMetadata,
+    SLPMD_TF,
+    ::testing::Values(
+        std::make_tuple(4ul, Rules{{1, 2}, {3, 4}, {5, 6}, {7, 7}}),
+        std::make_tuple(3ul, Rules{{1, 2}, {4, 3}, {5, 4}}),
+        std::make_tuple(3ul, Rules{{1, 1}, {1, 2}, {5, 3}, {5, 2}, {4, 4}, {6, 7}, {9, 8}})
+    )
 );
