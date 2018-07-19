@@ -9,6 +9,8 @@
 #include "grammar/slp.h"
 #include "grammar/slp_metadata.h"
 #include "grammar/slp_interface.h"
+#include "grammar/construct_slp.h"
+#include "grammar/re_pair.h"
 
 
 TEST(SLP, AddRule_Failed) {
@@ -235,3 +237,59 @@ INSTANTIATE_TEST_CASE_P(
         std::make_tuple(3ul, Rules{{1, 1}, {1, 2}, {5, 3}, {5, 2}, {4, 4}, {6, 7}, {9, 8}})
     )
 );
+
+
+template <typename T>
+class SLPGeneric_TF : public ::testing::Test {
+};
+
+using MyTypes = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar::PTS>>;
+TYPED_TEST_CASE(SLPGeneric_TF, MyTypes);
+
+TYPED_TEST(SLPGeneric_TF, construct) {
+//  auto sigma = 3ul;
+  std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
+  grammar::RePairEncoder<true> encoder;
+
+  TypeParam slp(0);
+  grammar::ConstructSLP(data.begin(), data.end(), encoder, slp);
+
+  EXPECT_EQ(slp.Sigma(), *std::max_element(data.begin(), data.end()));
+
+  Rules rules = {{1, 1}, {1, 2}, {3, 5}, {2, 4}, {6, 3}, {5, 6}, {7, 4}, {9, 10}, {11, 8}};
+  for (int i = 0; i < rules.size(); ++i) {
+    EXPECT_EQ(slp[slp.Sigma() + i + 1].first, rules[i].first);
+    EXPECT_EQ(slp[slp.Sigma() + i + 1].second, rules[i].second);
+//    EXPECT_EQ(slp.SpanLength(slp.Sigma() + i + 1), rules[i].length);
+  }
+}
+
+
+TEST(SLPGeneric_TF, compute) {
+//  auto sigma = 3ul;
+  std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
+  grammar::RePairEncoder<true> encoder;
+
+  grammar::SLPWithMetadata<grammar::PTS> slp(0);
+  grammar::ComputeSLP(data.begin(), data.end(), encoder, slp);
+
+  EXPECT_EQ(slp.Sigma(), *std::max_element(data.begin(), data.end()));
+
+  Rules rules = {{1, 1}, {1, 2}, {3, 5}, {2, 4}, {6, 3}, {5, 6}, {7, 4}, {9, 10}, {11, 8}};
+  for (int i = 0; i < rules.size(); ++i) {
+    EXPECT_EQ(slp[slp.Sigma() + i + 1].first, rules[i].first);
+    EXPECT_EQ(slp[slp.Sigma() + i + 1].second, rules[i].second);
+//    EXPECT_EQ(slp.SpanLength(slp.Sigma() + i + 1), rules[i].length);
+  }
+
+  for (auto i = 1ul; i <= slp.Variables(); ++i) {
+    auto span = slp.Span(i);
+//    std::cout << "+" << testing::PrintToString(span) << std::endl;
+    sort(span.begin(), span.end());
+    span.erase(unique(span.begin(), span.end()), span.end());
+//    std::cout << "-" << testing::PrintToString(span) << std::endl;
+//    std::cout << "*" << testing::PrintToString(slp_.GetData(i)) << std::endl;
+
+    EXPECT_EQ(slp.GetData(i), span);
+  }
+}
