@@ -107,17 +107,28 @@ class SLP {
 };
 
 
+template<typename _SLP>
 class SLPWrapper {
  public:
-  SLPWrapper(SLP &slp);
+  SLPWrapper(_SLP &slp) : slp_{slp} {}
 
-  void operator()(int sigma);
+  void operator()(int sigma) {
+    slp_.Reset(sigma);
+  }
 
-  void operator()(int left, int right, int length);
+  void operator()(int left, int right, int length) {
+    slp_.AddRule(left, right, length);
+  }
 
  private:
-  SLP &slp_;
+  _SLP &slp_;
 };
+
+
+template<typename _SLP>
+SLPWrapper<_SLP> BuildSLPWrapper(_SLP &slp) {
+  return SLPWrapper<_SLP>(slp);
+}
 
 
 /**
@@ -131,7 +142,7 @@ class SLPWrapper {
 template<typename _Metadata>
 class SLPWithMetadata : public SLP {
  public:
-  template <typename _Data>
+  template<typename _Data>
   SLPWithMetadata(_Data data): SLP(data) {}
 
   /**

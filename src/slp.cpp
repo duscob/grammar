@@ -73,15 +73,3 @@ void grammar::SLP::Reset(std::size_t sigma) {
   rules_.clear();
 }
 
-
-grammar::SLPWrapper::SLPWrapper(grammar::SLP &slp) : slp_{slp} {}
-
-
-void grammar::SLPWrapper::operator()(int sigma) {
-  slp_ = grammar::SLP(sigma);
-}
-
-
-void grammar::SLPWrapper::operator()(int left, int right, int length) {
-  slp_.AddRule(left, right, length);
-}

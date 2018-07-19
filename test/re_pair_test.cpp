@@ -126,7 +126,7 @@ TEST_P(RePairEncoderInChomskyNFTF, encode) {
 
 TEST_P(RePairEncoderInChomskyNFTF, encode_slp) {
   grammar::SLP slp(0);
-  grammar::SLPWrapper report_rules(slp);
+  auto report_rules = grammar::BuildSLPWrapper(slp);
 
   grammar::RePairEncoder<true> encoder;
   encoder.Encode(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end(), report_rules);
