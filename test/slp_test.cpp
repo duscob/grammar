@@ -9,7 +9,7 @@
 #include "grammar/slp.h"
 #include "grammar/slp_metadata.h"
 #include "grammar/slp_interface.h"
-#include "grammar/construct_slp.h"
+#include "grammar/slp_helper.h"
 #include "grammar/re_pair.h"
 
 
