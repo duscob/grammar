@@ -24,7 +24,7 @@ TEST(SLP, AddRule_Failed) {
 
 
 using RightHand = std::pair<std::size_t, std::size_t>;
-using Rules = std::vector<std::pair<size_t, RightHand>>;
+using Rules = std::vector<RightHand>;
 
 
 class SLP_TF : public ::testing::TestWithParam<std::tuple<std::shared_ptr<grammar::SLPInterface>,
@@ -41,7 +41,7 @@ class SLP_TF : public ::testing::TestWithParam<std::tuple<std::shared_ptr<gramma
     slp_->Reset(sigma);
 
     for (auto &&rule : rules) {
-      slp_->AddRule(rule.second.first, rule.second.second);
+      slp_->AddRule(rule.first, rule.second);
     }
   }
 
@@ -73,8 +73,8 @@ TEST_P(SLP_TF, AddRules) {
   slp_->Reset(sigma);
 
   // Check rule addition
-  for (auto &&rule : rules) {
-    EXPECT_EQ(slp_->AddRule(rule.second.first, rule.second.second), rule.first);
+  for (std::size_t i = 0; i < rules.size(); ++i) {
+    EXPECT_EQ(slp_->AddRule(rules[i].first, rules[i].second), sigma + i + 1);
   }
 
   EXPECT_EQ(slp_->Variables(), sigma + rules.size());
@@ -86,11 +86,11 @@ TEST_P(SLP_TF, Access) {
   auto &rules = GetRules();
 
   // Check start rule
-  EXPECT_EQ(slp_->Start(), rules.back().first);
+  EXPECT_EQ(slp_->Start(), sigma + rules.size());
 
   // Check rule access
-  for (auto &&rule : rules) {
-    EXPECT_EQ((*slp_)[rule.first], rule.second);
+  for (std::size_t i = 0; i < rules.size(); ++i) {
+    EXPECT_EQ((*slp_)[sigma + i + 1], rules[i]);
   }
 
   for (std::size_t i = 1; i <= sigma; ++i) {
@@ -125,11 +125,11 @@ TEST_P(SLP_TF, Span) {
 
   for (auto &&rule : rules) {
     spans[i].insert(spans[i].end(),
-                    spans[rule.second.first].begin(),
-                    spans[rule.second.first].end());
+                    spans[rule.first].begin(),
+                    spans[rule.first].end());
     spans[i].insert(spans[i].end(),
-                    spans[rule.second.second].begin(),
-                    spans[rule.second.second].end());
+                    spans[rule.second].begin(),
+                    spans[rule.second].end());
     ++i;
   }
 
@@ -152,7 +152,7 @@ TEST_P(SLP_TF, SpanLength) {
   }
 
   for (auto &&rule : rules) {
-    lengths[i] = lengths[rule.second.first] + lengths[rule.second.second];
+    lengths[i] = lengths[rule.first] + lengths[rule.second];
     ++i;
   }
 
@@ -184,8 +184,54 @@ INSTANTIATE_TEST_CASE_P(
             std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLPWithMetadata<grammar::PTS>>(0))
         ),
         ::testing::Values(
-            std::make_tuple(4ul, Rules{{5, {1, 2}}, {6, {3, 4}}, {7, {5, 6}}, {8, {7, 7}}}),
-            std::make_tuple(3ul, Rules{{4, {1, 2}}, {5, {4, 3}}, {6, {5, 4}}})
+            std::make_tuple(4ul, Rules{{1, 2}, {3, 4}, {5, 6}, {7, 7}}),
+            std::make_tuple(3ul, Rules{{1, 2}, {4, 3}, {5, 4}})
         )
+    )
+);
+
+
+
+class SLPWithMetadata_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules>> {
+ protected:
+  grammar::SLPWithMetadata<grammar::PTS> slp_{0};
+
+// Sets up the test fixture.
+  void SetUp() override {
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    slp_.Reset(sigma);
+
+    for (auto &&rule : rules) {
+      slp_.AddRule(rule.first, rule.second), rule.first;
+    }
+  }
+};
+
+
+TEST_P(SLPWithMetadata_TF, PTS) {
+  slp_.ComputeMetadata();
+
+  for (auto i = 1ul; i <= slp_.Variables(); ++i) {
+    auto span = slp_.Span(i);
+//    std::cout << "+" << testing::PrintToString(span) << std::endl;
+    sort(span.begin(), span.end());
+    span.erase(unique(span.begin(), span.end()), span.end());
+//    std::cout << "-" << testing::PrintToString(span) << std::endl;
+//    std::cout << "*" << testing::PrintToString(slp_.GetData(i)) << std::endl;
+
+    EXPECT_EQ(slp_.GetData(i), span);
+  }
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    SLP,
+    SLPWithMetadata_TF,
+    ::testing::Values(
+        std::make_tuple(4ul, Rules{{1, 2}, {3, 4}, {5, 6}, {7, 7}}),
+        std::make_tuple(3ul, Rules{{1, 2}, {4, 3}, {5, 4}}),
+        std::make_tuple(3ul, Rules{{1, 1}, {1, 2}, {5, 3}, {5, 2}, {4, 4}, {6, 7}, {9, 8}})
     )
 );

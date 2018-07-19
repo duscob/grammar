@@ -120,11 +120,38 @@ class SLPWrapper {
 };
 
 
+/**
+ * Straight-Line Program With Metadata
+ *
+ * This data structure represent, roughly, a Context-Free Grammar in Chomsky Normal Form, where all non-terminals
+ * appears at left hand of a unique rule. Represent also some metadata associated to the variables of SLP.
+ *
+ * @tparam _Metadata
+ */
 template<typename _Metadata>
 class SLPWithMetadata : public SLP {
  public:
   template <typename _Data>
-  SLPWithMetadata(_Data data): SLP(data), metadata_(*this) {}
+  SLPWithMetadata(_Data data): SLP(data) {}
+
+  /**
+   * Compute the metadata. This methods must be called before GetData.
+   */
+  void ComputeMetadata() {
+    metadata_.Compute(*this);
+  }
+
+  /**
+   * Get metadata associated to variable i
+   *
+   * @param i
+   *
+   * @return metadata
+   */
+  auto GetData(std::size_t i) {
+    // todo verify ComputeMetadata was called before
+    return metadata_[i];
+  }
 
  private:
   _Metadata metadata_;

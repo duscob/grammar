@@ -15,6 +15,9 @@ namespace grammar {
  */
 class PTS {
  public:
+
+  PTS() {}
+
   /**
    * Construct the set of terminals for each variable
    *
@@ -23,6 +26,17 @@ class PTS {
    */
   template<typename _SLP>
   PTS(const _SLP &slp) {
+    Compute(slp);
+  }
+
+  /**
+   * Compute the set of terminals for each variable
+   *
+   * @tparam _SLP Straight-Line Program (Grammar)
+   * @param slp
+   */
+  template<typename _SLP>
+  void Compute(const _SLP &slp) {
     sets_.reserve(slp.Variables() + 1);
     sets_.emplace_back(0);
 
