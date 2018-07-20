@@ -54,7 +54,7 @@ set(SOURCE_FILES include/grammar/re_pair.h
         src/slp.cpp
         include/grammar/slp_metadata.h
         include/grammar/slp_interface.h
-        include/grammar/construct_slp.h)
+        include/grammar/slp_helper.h)
 
 add_library(grammar ${SOURCE_FILES})
 target_link_libraries(grammar)
