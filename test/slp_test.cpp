@@ -12,8 +12,8 @@
 #include "grammar/slp_helper.h"
 #include "grammar/re_pair.h"
 
-TEST(SLP, AddRule_Failed) {
 
+TEST(SLP, AddRule_Failed) {
   auto sigma = 4ul;
 
   grammar::SLP slp(sigma);
@@ -23,8 +23,10 @@ TEST(SLP, AddRule_Failed) {
   EXPECT_EQ(slp.AddRule(1, sigma + 1), sigma + 2);
 }
 
+
 using RightHand = std::pair<std::size_t, std::size_t>;
 using Rules = std::vector<RightHand>;
+
 
 class SLP_TF : public ::testing::TestWithParam<std::tuple<std::shared_ptr<grammar::SLPInterface>,
                                                           std::tuple<std::size_t, Rules>>> {
@@ -56,12 +58,14 @@ class SLP_TF : public ::testing::TestWithParam<std::tuple<std::shared_ptr<gramma
   }
 };
 
+
 TEST_P(SLP_TF, Sigma) {
   auto sigma = GetSigma();
   slp_->Reset(sigma);
 
   EXPECT_EQ(slp_->Sigma(), sigma);
 }
+
 
 TEST_P(SLP_TF, AddRules) {
   auto &sigma = GetSigma();
@@ -76,6 +80,7 @@ TEST_P(SLP_TF, AddRules) {
 
   EXPECT_EQ(slp_->Variables(), sigma + rules.size());
 }
+
 
 TEST_P(SLP_TF, Access) {
   auto &sigma = GetSigma();
@@ -96,6 +101,7 @@ TEST_P(SLP_TF, Access) {
   EXPECT_ANY_THROW((*slp_)[sigma + rules.size() + 1]);
 }
 
+
 TEST_P(SLP_TF, IsTerminal) {
   auto &sigma = GetSigma();
 
@@ -106,6 +112,7 @@ TEST_P(SLP_TF, IsTerminal) {
   EXPECT_FALSE(slp_->IsTerminal(sigma + 1));
   EXPECT_FALSE(slp_->IsTerminal(sigma + 2));
 }
+
 
 TEST_P(SLP_TF, Span) {
   auto &sigma = GetSigma();
@@ -128,10 +135,10 @@ TEST_P(SLP_TF, Span) {
   }
 
   for (int j = 1; j < spans.size(); ++j) {
-//    std::cout << testing::PrintToString(spans[j]) << std::endl;
     EXPECT_EQ(slp_->Span(j), spans[j]);
   }
 }
+
 
 TEST_P(SLP_TF, SpanLength) {
   auto &sigma = GetSigma();
@@ -154,6 +161,7 @@ TEST_P(SLP_TF, SpanLength) {
   }
 }
 
+
 TEST_P(SLP_TF, Reset) {
   auto sigma = GetSigma();
   auto &rules = GetRules();
@@ -166,13 +174,15 @@ TEST_P(SLP_TF, Reset) {
   EXPECT_EQ(slp_->Variables(), sigma + 5);
 }
 
+
 INSTANTIATE_TEST_CASE_P(
     SLP,
     SLP_TF,
     ::testing::Combine(
         ::testing::Values(
             std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLP>(0)),
-            std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLPWithMetadata<grammar::PTS>>(0))
+            std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLPWithMetadata<grammar::PTS<>>>(
+                0))
         ),
         ::testing::Values(
             std::make_tuple(4ul, Rules{{1, 2}, {3, 4}, {5, 6}, {7, 7}}),
@@ -181,9 +191,10 @@ INSTANTIATE_TEST_CASE_P(
     )
 );
 
+
 class SLPWithMetadata_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules>> {
  protected:
-  grammar::SLPWithMetadata<grammar::PTS> slp_{0};
+  grammar::SLPWithMetadata<grammar::PTS<>> slp_{0};
 
 // Sets up the test fixture.
   void SetUp() override {
@@ -198,20 +209,21 @@ class SLPWithMetadata_TF : public ::testing::TestWithParam<std::tuple<std::size_
   }
 };
 
+
 TEST_P(SLPWithMetadata_TF, PTS) {
   slp_.ComputeMetadata();
 
   for (auto i = 1ul; i <= slp_.Variables(); ++i) {
     auto span = slp_.Span(i);
-//    std::cout << "+" << testing::PrintToString(span) << std::endl;
     sort(span.begin(), span.end());
     span.erase(unique(span.begin(), span.end()), span.end());
-//    std::cout << "-" << testing::PrintToString(span) << std::endl;
-//    std::cout << "*" << testing::PrintToString(slp_.GetData(i)) << std::endl;
 
-    EXPECT_EQ(slp_.GetData(i), span);
+    const auto &result = slp_.GetData(i);
+    ASSERT_EQ(result.size(), span.size());
+    EXPECT_TRUE(equal(result.begin(), result.end(), span.begin()));
   }
 }
+
 
 INSTANTIATE_TEST_CASE_P(
     SLP,
@@ -223,15 +235,17 @@ INSTANTIATE_TEST_CASE_P(
     )
 );
 
+
 template<typename T>
 class SLPGeneric_TF : public ::testing::Test {
 };
 
-using MyTypes = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar::PTS>>;
+
+using MyTypes = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar::PTS<>>>;
 TYPED_TEST_CASE(SLPGeneric_TF, MyTypes);
 
+
 TYPED_TEST(SLPGeneric_TF, construct) {
-//  auto sigma = 3ul;
   std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
   grammar::RePairEncoder<true> encoder;
 
@@ -244,16 +258,15 @@ TYPED_TEST(SLPGeneric_TF, construct) {
   for (int i = 0; i < rules.size(); ++i) {
     EXPECT_EQ(slp[slp.Sigma() + i + 1].first, rules[i].first);
     EXPECT_EQ(slp[slp.Sigma() + i + 1].second, rules[i].second);
-//    EXPECT_EQ(slp.SpanLength(slp.Sigma() + i + 1), rules[i].length);
   }
 }
 
+
 TEST(SLPGeneric_TF, compute) {
-//  auto sigma = 3ul;
   std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
   grammar::RePairEncoder<true> encoder;
 
-  grammar::SLPWithMetadata<grammar::PTS> slp(0);
+  grammar::SLPWithMetadata<grammar::PTS<>> slp(0);
   grammar::ComputeSLP(data.begin(), data.end(), encoder, slp);
 
   EXPECT_EQ(slp.Sigma(), *std::max_element(data.begin(), data.end()));
@@ -262,27 +275,27 @@ TEST(SLPGeneric_TF, compute) {
   for (int i = 0; i < rules.size(); ++i) {
     EXPECT_EQ(slp[slp.Sigma() + i + 1].first, rules[i].first);
     EXPECT_EQ(slp[slp.Sigma() + i + 1].second, rules[i].second);
-//    EXPECT_EQ(slp.SpanLength(slp.Sigma() + i + 1), rules[i].length);
   }
 
   for (auto i = 1ul; i <= slp.Variables(); ++i) {
     auto span = slp.Span(i);
-//    std::cout << "+" << testing::PrintToString(span) << std::endl;
     sort(span.begin(), span.end());
     span.erase(unique(span.begin(), span.end()), span.end());
-//    std::cout << "-" << testing::PrintToString(span) << std::endl;
-//    std::cout << "*" << testing::PrintToString(slp_.GetData(i)) << std::endl;
 
-    EXPECT_EQ(slp.GetData(i), span);
+    const auto &result = slp.GetData(i);
+    ASSERT_EQ(result.size(), span.size());
+    EXPECT_TRUE(equal(result.begin(), result.end(), span.begin()));
   }
 }
+
 
 using Span = std::pair<std::size_t, std::size_t>;
 using SpanCover = std::vector<std::size_t>;
 
+
 class SLPSpanCover_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules, Span, SpanCover>> {
  protected:
-  grammar::SLPWithMetadata<grammar::PTS> slp_{0};
+  grammar::SLPWithMetadata<grammar::PTS<>> slp_{0};
 
 // Sets up the test fixture.
   void SetUp() override {
@@ -299,6 +312,7 @@ class SLPSpanCover_TF : public ::testing::TestWithParam<std::tuple<std::size_t, 
   }
 };
 
+
 TEST_P(SLPSpanCover_TF, SpanCover) {
   auto &span = std::get<2>(GetParam());
 
@@ -308,6 +322,7 @@ TEST_P(SLPSpanCover_TF, SpanCover) {
   auto &eresult = std::get<3>(GetParam());
   EXPECT_EQ(result, eresult);
 }
+
 
 INSTANTIATE_TEST_CASE_P(
     SLP,
@@ -395,7 +410,7 @@ INSTANTIATE_TEST_CASE_P(
             4ul,
             Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
             Span{6, 13},
-            SpanCover{1, 7, 6 ,2}
+            SpanCover{1, 7, 6, 2}
         )
     )
 );
