@@ -13,9 +13,9 @@ namespace grammar {
 /**
  * Precomputed Terminal Set
  */
+template<typename _Container = std::vector<uint32_t>>
 class PTS {
  public:
-
   PTS() {}
 
   /**
@@ -38,22 +38,27 @@ class PTS {
   template<typename _SLP>
   void Compute(const _SLP &slp) {
     sets_.reserve(slp.Variables() + 1);
-    sets_.emplace_back(0);
+
+    std::vector<typename _Container::value_type> set(0);
+    sets_.emplace_back(set);
 
     std::size_t i = 1;
+    set.reserve(1);
+    set.push_back(0);
     for (; i <= slp.Sigma(); ++i) {
-      sets_.emplace_back(1, i);
+      set[0] = i;
+      sets_.emplace_back(set);
     }
 
+    set.reserve(slp.Sigma());
     for (; i <= slp.Variables(); ++i) {
       const auto &right_hand = slp[i];
       const auto &left = sets_[right_hand.first];
       const auto &right = sets_[right_hand.second];
 
-      sets_.emplace_back(0);
-      sets_.reserve(left.size() + right.size());
-      set_union(begin(left), end(left), begin(right), end(right), back_inserter(sets_.back()));
-      sets_.back().shrink_to_fit();
+      set.clear();
+      set_union(left.begin(), left.end(), right.begin(), right.end(), back_inserter(set));
+      sets_.emplace_back(set);
     }
   }
 
@@ -63,12 +68,12 @@ class PTS {
    * @param i variable
    * @return set of terminal
    */
-  const std::vector<std::size_t> &operator[](std::size_t i) const {
+  const _Container &operator[](std::size_t i) const {
     return sets_.at(i);
   }
 
  protected:
-  std::vector<std::vector<std::size_t>> sets_;
+  std::vector<_Container> sets_;
 };
 
 }
