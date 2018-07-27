@@ -54,10 +54,13 @@ set(SOURCE_FILES include/grammar/re_pair.h
         src/slp.cpp
         include/grammar/slp_metadata.h
         include/grammar/slp_interface.h
-        include/grammar/slp_helper.h)
+        include/grammar/slp_helper.h
+        include/grammar/sampled_slp.h)
 
 add_library(grammar ${SOURCE_FILES})
-target_link_libraries(grammar)
+
+set(LIBS sdsl)
+target_link_libraries(grammar ${LIBS})
 
 
 ########################################################################
@@ -102,4 +105,6 @@ if (grammar_build_tests)
     cxx_test_with_flags_and_args(slp_test "" "gtest;gtest_main;grammar" "" test/slp_test.cpp)
 
     cxx_test_with_flags_and_args(slp_metadata_test "" "gtest;gtest_main;grammar;sdsl" "" test/slp_metadata_test.cpp)
+
+    cxx_test_with_flags_and_args(sampled_slp_test "" "gtest;gtest_main;grammar" "" test/sampled_slp_test.cpp)
 endif ()
