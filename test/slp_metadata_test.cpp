@@ -115,3 +115,21 @@ TYPED_TEST(SLPMDGeneric_TF, PTSConstructor) {
     EXPECT_TRUE(equal(result.begin(), result.end(), span.begin()));
   }
 }
+
+
+TEST(SampledPTSBuilder, AddSet) {
+  grammar::SampledPTS<> ppts;
+
+  std::vector<std::vector<uint32_t>> set = {{1, 2, 3}, {2}, {1, 2, 3}};
+
+  for (int i = 0; i < set.size(); ++i) {
+    EXPECT_EQ(ppts.AddSet(set[i]), i + 1);
+    auto s = ppts[i + 1];
+    EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
+  }
+
+  for (int i = 0; i < set.size(); ++i) {
+    auto s = ppts[i + 1];
+    EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
+  }
+}

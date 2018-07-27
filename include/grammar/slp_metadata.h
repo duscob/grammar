@@ -6,6 +6,7 @@
 #define GRAMMAR_SLP_METADATA_H
 
 #include <vector>
+#include <cstdint>
 
 
 namespace grammar {
@@ -16,7 +17,7 @@ namespace grammar {
 template<typename _Container = std::vector<uint32_t>>
 class PTS {
  public:
-  PTS() {}
+  PTS() = default;
 
   /**
    * Construct the set of terminals for each variable
@@ -74,6 +75,50 @@ class PTS {
 
  protected:
   std::vector<_Container> sets_;
+};
+
+
+/**
+ * Sampled Precomputed Terminal Set
+ *
+ * @tparam _ValueType
+ */
+template<typename _ValueType = uint32_t>
+class SampledPTS {
+ public:
+  template<typename _Set>
+  std::size_t AddSet(const _Set &_set) {
+    return (*this)(begin(_set), end(_set));
+  }
+
+
+  template<typename _II>
+  std::size_t AddSet(_II _begin, _II _end) {
+    return (*this)(_begin, _end);
+  }
+
+
+  template<typename _II>
+  std::size_t operator()(_II _begin, _II _end) {
+    if (_begin == _end)
+      return 0;
+
+    b_d.push_back(d.size());
+    for (auto it = _begin; it != _end; ++it) {
+      d.push_back(*it);
+    }
+
+    return b_d.size();
+  }
+
+
+  auto operator[](std::size_t i) {
+    return std::make_pair(d.cbegin() + b_d[i - 1], (i < b_d.size()) ? d.cbegin() + b_d[i] : d.cend());
+  }
+
+ private:
+  std::vector<_ValueType> d;
+  std::vector<std::size_t> b_d;
 };
 
 }
