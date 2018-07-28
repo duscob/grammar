@@ -127,3 +127,74 @@ INSTANTIATE_TEST_CASE_P(
         )
     )
 );
+
+
+class SampledSLPNodes_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules, uint, float, Nodes>> {
+ protected:
+  grammar::SLP slp_{0};
+
+// Sets up the test fixture.
+  void SetUp() override {
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    slp_ = grammar::SLP(sigma);
+
+    for (auto &&rule : rules) {
+      slp_.AddRule(rule.first, rule.second), rule.first;
+    }
+  }
+};
+
+
+TEST_P(SampledSLPNodes_TF, ComputeSampledSLPNodes) {
+  Nodes nodes;
+  auto block_size = std::get<2>(GetParam());
+
+  grammar::SampledPTS<> spts;
+  grammar::AddSet<grammar::SampledPTS<>> add_set(spts);
+  grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(nodes), add_set);
+
+  auto storing_factor = std::get<3>(GetParam());
+  grammar::MustBeSampled<grammar::SampledPTS<>> pred(spts, storing_factor);
+  grammar::ComputeSampledSLP(slp_, block_size, nodes, pred, add_set);
+
+  const auto &e_nodes = std::get<4>(GetParam());;
+  EXPECT_EQ(nodes, e_nodes);
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    SampledSLP,
+    SampledSLPNodes_TF,
+    ::testing::Values(
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4u,
+            1,
+            Nodes{9, 6, 7, 6, 10, 11, 12, 13, 14}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4u,
+            2,
+            Nodes{9, 6, 7, 6, 10, 12, 14}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4u,
+            3,
+            Nodes{9, 6, 7, 6, 10, 14}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4u,
+            2.5,
+            Nodes{9, 6, 7, 6, 10, 13, 14}
+        )
+    )
+);

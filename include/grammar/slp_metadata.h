@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <cassert>
 
 
 namespace grammar {
@@ -113,6 +114,8 @@ class SampledPTS {
 
 
   auto operator[](std::size_t i) const {
+    assert(i <= b_d.size());
+
     return std::make_pair(d.cbegin() + b_d[i - 1], (i < b_d.size()) ? d.cbegin() + b_d[i] : d.cend());
   }
 
