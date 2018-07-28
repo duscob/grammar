@@ -112,8 +112,13 @@ class SampledPTS {
   }
 
 
-  auto operator[](std::size_t i) {
+  auto operator[](std::size_t i) const {
     return std::make_pair(d.cbegin() + b_d[i - 1], (i < b_d.size()) ? d.cbegin() + b_d[i] : d.cend());
+  }
+
+
+  auto size() const {
+    return b_d.size();
   }
 
  private:

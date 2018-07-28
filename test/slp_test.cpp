@@ -245,7 +245,7 @@ using MyTypes = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar:
 TYPED_TEST_CASE(SLPGeneric_TF, MyTypes);
 
 
-TYPED_TEST(SLPGeneric_TF, construct) {
+TYPED_TEST(SLPGeneric_TF, Construct) {
   std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
   grammar::RePairEncoder<true> encoder;
 
@@ -262,7 +262,7 @@ TYPED_TEST(SLPGeneric_TF, construct) {
 }
 
 
-TEST(SLPGeneric_TF, compute) {
+TEST(SLPGeneric_TF, Compute) {
   std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
   grammar::RePairEncoder<true> encoder;
 

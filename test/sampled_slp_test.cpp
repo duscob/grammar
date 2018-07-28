@@ -6,6 +6,7 @@
 
 #include "grammar/sampled_slp.h"
 #include "grammar/slp.h"
+#include "grammar/slp_metadata.h"
 
 
 using RightHand = std::pair<std::size_t, std::size_t>;
@@ -37,14 +38,50 @@ TEST_P(SampledSLPLeaves_TF, ComputeSampledSLPLeaf) {
 
   grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(leaves));
 
+  // Check leaves
   const auto &e_leaves = std::get<3>(GetParam());;
   EXPECT_EQ(leaves, e_leaves);
 
+  // Check that leaves cover full sequence
   std::size_t size = 0;
   for (const auto &item : leaves) {
     size += slp_.SpanLength(item);
   }
   EXPECT_EQ(size, slp_.SpanLength(slp_.Start()));
+}
+
+
+TEST_P(SampledSLPLeaves_TF, ComputeSampledSLPLeavesAndItsPTS) {
+  Nodes leaves;
+  auto &block_size = std::get<2>(GetParam());
+
+  grammar::SampledPTS<> spts;
+  grammar::AddSet<grammar::SampledPTS<>> add_set(spts);
+  grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(leaves), add_set);
+
+  // Check leaves
+  const auto &e_leaves = std::get<3>(GetParam());;
+  EXPECT_EQ(leaves, e_leaves);
+
+  // Check that leaves cover full sequence
+  std::size_t size = 0;
+  for (const auto &item : leaves) {
+    size += slp_.SpanLength(item);
+  }
+  EXPECT_EQ(size, slp_.SpanLength(slp_.Start()));
+
+  // Check that we get a set for each leaf
+  EXPECT_EQ(leaves.size(), spts.size());
+  for (int i = 0; i < leaves.size(); ++i) {
+    auto e_set = this->slp_.Span(leaves[i]);
+    sort(e_set.begin(), e_set.end());
+    e_set.erase(unique(e_set.begin(), e_set.end()), e_set.end());
+
+    // check the set for each leaf
+    auto set = spts[i + 1];
+    EXPECT_EQ(set.second - set.first, e_set.size());
+    EXPECT_TRUE(std::equal(set.first, set.second, e_set.begin()));
+  }
 }
 
 

@@ -59,6 +59,7 @@ void ComputeSpanCover(const _SLP &slp,
   ComputeSpanCoverEnding(slp, end - left_length, oit, children.second);
 }
 
+
 template<typename _SLP, typename _OutputIterator>
 void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OutputIterator oit, std::size_t curr_var) {
   if (begin == 0) {
@@ -79,6 +80,7 @@ void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OutputIterat
   oit = children.second;
   ++oit;
 }
+
 
 template<typename _SLP, typename _OutputIterator>
 void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OutputIterator oit, std::size_t curr_var) {
