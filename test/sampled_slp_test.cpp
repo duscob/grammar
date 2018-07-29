@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <sdsl/sd_vector.hpp>
+
 #include "grammar/sampled_slp.h"
 #include "grammar/slp.h"
 #include "grammar/slp_metadata.h"
@@ -157,7 +159,7 @@ TEST_P(SampledSLPNodes_TF, ComputeSampledSLPNodes) {
 
   auto storing_factor = std::get<3>(GetParam());
   grammar::MustBeSampled<grammar::SampledPTS<>> pred(spts, storing_factor);
-  grammar::ComputeSampledSLP(slp_, block_size, nodes, pred, add_set);
+  grammar::ComputeSampledSLPNodes(slp_, block_size, nodes, pred, add_set);
 
   const auto &e_nodes = std::get<4>(GetParam());;
   EXPECT_EQ(nodes, e_nodes);
@@ -195,6 +197,104 @@ INSTANTIATE_TEST_CASE_P(
             4u,
             2.5,
             Nodes{9, 6, 7, 6, 10, 13, 14}
+        )
+    )
+);
+
+using Pair = std::pair<std::size_t, std::size_t>;
+
+
+class SampledSLPMap_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules, std::vector<Pair>>> {
+ protected:
+  grammar::SLP slp_{0};
+
+// Sets up the test fixture.
+  void SetUp() override {
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    slp_ = grammar::SLP(sigma);
+
+    for (auto &&rule : rules) {
+      slp_.AddRule(rule.first, rule.second), rule.first;
+    }
+  }
+};
+
+
+TEST_P(SampledSLPMap_TF, Map) {
+  grammar::SampledSLP<sdsl::sd_vector<>, sdsl::sd_vector<>::rank_1_type, grammar::SampledPTS<>> sslp(slp_, 4, 2.5);
+
+  const auto &pos = std::get<2>(GetParam());
+
+  for (int i = 0; i < pos.size(); ++i) {
+    EXPECT_EQ(sslp.map(pos[i].first), pos[i].second) << i;
+  }
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    SampledSLP,
+    SampledSLPMap_TF,
+    ::testing::Values(
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            std::vector<Pair>{{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 2}, {5, 2}, {6, 2}, {7, 3}, {8, 3}, {9, 4}, {10, 4},
+                              {11, 4}, {12, 5}, {13, 5}, {14, 5}, {15, 5}}
+        )
+    )
+);
+
+
+class SampledSLPParent_TF : public ::testing::TestWithParam<std::tuple<std::size_t,
+                                                                       Rules,
+                                                                       uint,
+                                                                       float,
+                                                                       std::vector<Pair>>> {
+ protected:
+  grammar::SLP slp_{0};
+
+// Sets up the test fixture.
+  void SetUp() override {
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    slp_ = grammar::SLP(sigma);
+
+    for (auto &&rule : rules) {
+      slp_.AddRule(rule.first, rule.second), rule.first;
+    }
+  }
+};
+
+
+TEST_P(SampledSLPParent_TF, Parent) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::SampledSLP<sdsl::sd_vector<>, sdsl::sd_vector<>::rank_1_type, grammar::SampledPTS<>>
+      sslp(slp_, block_size, storing_factor);
+
+  const auto &pos = std::get<4>(GetParam());
+
+  for (int i = 0; i < pos.size(); ++i) {
+    EXPECT_EQ(sslp.parent(pos[i].first), pos[i].second) << i;
+  }
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    SampledSLP,
+    SampledSLPParent_TF,
+    ::testing::Values(
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            1,
+            std::vector<Pair>{{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 2}, {5, 2}, {6, 2}, {7, 3}, {8, 3}, {9, 4}, {10, 4},
+                              {11, 4}, {12, 5}, {13, 5}, {14, 5}, {15, 5}}
         )
     )
 );
