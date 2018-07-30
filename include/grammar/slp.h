@@ -107,30 +107,6 @@ class SLP {
 };
 
 
-template<typename _SLP>
-class SLPWrapper {
- public:
-  SLPWrapper(_SLP &slp) : slp_{slp} {}
-
-  void operator()(int sigma) {
-    slp_.Reset(sigma);
-  }
-
-  void operator()(int left, int right, int length) {
-    slp_.AddRule(left, right, length);
-  }
-
- private:
-  _SLP &slp_;
-};
-
-
-template<typename _SLP>
-SLPWrapper<_SLP> BuildSLPWrapper(_SLP &slp) {
-  return SLPWrapper<_SLP>(slp);
-}
-
-
 /**
  * Straight-Line Program With Metadata
  *

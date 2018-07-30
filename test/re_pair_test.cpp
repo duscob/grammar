@@ -6,6 +6,7 @@
 
 #include "grammar/re_pair.h"
 #include "grammar/slp.h"
+#include "grammar/slp_helper.h"
 
 
 struct NonTerminal {

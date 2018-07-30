@@ -8,8 +8,10 @@
 #include <cstdint>
 #include <vector>
 #include <map>
-#include <unordered_map>
+#include <algorithm>
 #include <cassert>
+
+#include "slp_helper.h"
 
 
 namespace grammar {
@@ -140,141 +142,6 @@ class Chunks {
  private:
   std::vector<_ValueType> d;
   std::vector<std::size_t> b_d;
-};
-
-
-class NoAction {
- public:
-  template<typename ...Args>
-  void operator()(Args... args) {}
-};
-
-
-template<typename _SLP, typename _OutputIterator, typename _Action = NoAction>
-void ComputeSampledSLPLeaves(const _SLP &_slp,
-                             uint64_t _block_size,
-                             _OutputIterator _out,
-                             _Action _action = NoAction()) {
-  ComputeSampledSLPLeaves(_slp, _block_size, _out, _slp.Start(), _action);
-}
-
-
-template<typename _SLP, typename _OutputIterator, typename _Action = NoAction>
-void ComputeSampledSLPLeaves(const _SLP &_slp,
-                             uint64_t _block_size,
-                             _OutputIterator _out,
-                             std::size_t _curr_var,
-                             _Action _action = NoAction()) {
-  if (_curr_var == 0)
-    _curr_var = _slp.Start();
-
-  auto length = _slp.SpanLength(_curr_var);
-  if (length <= _block_size) {
-    _out = _curr_var;
-    ++_out;
-
-    _action(_slp, _curr_var);
-
-    return;
-  }
-
-  const auto &children = _slp[_curr_var];
-
-  ComputeSampledSLPLeaves(_slp, _block_size, _out, children.first, _action);
-  ComputeSampledSLPLeaves(_slp, _block_size, _out, children.second, _action);
-}
-
-
-template<typename _SLP, typename _SLPValueType = uint32_t, typename _Predicate, typename _Action = NoAction>
-void ComputeSampledSLPNodes(const _SLP &_slp,
-                            uint32_t _block_size,
-                            std::vector<_SLPValueType> &_nodes,
-                            const _Predicate &_pred,
-                            _Action _action = NoAction()) {
-  std::size_t curr_leaf = 0;
-  ComputeSampledSLPNodes(_slp, _slp.Start(), _block_size, _nodes, curr_leaf, _pred, _action);
-}
-
-
-template<typename _SLP, typename _SLPValueType = uint32_t, typename _Predicate, typename _Action = NoAction>
-std::vector<std::pair<std::size_t, std::size_t>> ComputeSampledSLPNodes(const _SLP &_slp,
-                                                                        std::size_t _curr_var,
-                                                                        uint32_t _block_size,
-                                                                        std::vector<_SLPValueType> &_nodes,
-                                                                        std::size_t &_curr_leaf,
-                                                                        const _Predicate &_pred,
-                                                                        _Action _action = NoAction()) {
-  auto length = _slp.SpanLength(_curr_var);
-  if (length <= _block_size) {
-    return {{_curr_leaf++, 1}};
-  }
-
-  const auto &children = _slp[_curr_var];
-
-  auto left_children = ComputeSampledSLPNodes(_slp, children.first, _block_size, _nodes, _curr_leaf, _pred, _action);
-  auto right_children = ComputeSampledSLPNodes(_slp, children.second, _block_size, _nodes, _curr_leaf, _pred, _action);
-
-  if (_pred(_slp, _curr_var, left_children, right_children) || _curr_var == _slp.Start()) {
-    _nodes.emplace_back(_curr_var);
-    auto new_node = _nodes.size() - 1;
-    _action(_slp, _curr_var, _nodes, new_node, left_children, right_children);
-    return {{new_node, 1}};
-  } else {
-    left_children.insert(left_children.end(), right_children.begin(), right_children.end());
-    return left_children;
-  }
-}
-
-
-/**
- * Predicate Must Be Sampled
- *
- * @tparam _PTS Precomputed Terminal Set
- */
-template<typename _PTS>
-class MustBeSampled {
- public:
-  MustBeSampled(const _PTS &_pts, float _storing_factor) : pts_(_pts), storing_factor_(_storing_factor) {}
-
-  template<typename _SLP, typename _RangeContainer>
-  bool operator()(const _SLP &_slp,
-                  std::size_t _curr_var,
-                  const _RangeContainer &left_ranges,
-                  const _RangeContainer &right_ranges) const {
-
-    auto it = cache.find(_curr_var);
-    if (it != cache.end()) {
-      return it->second;
-    }
-
-    auto Count = [this](const auto &ranges) -> auto {
-      std::size_t length = 0;
-      for (const auto &range : ranges) {
-        for (int i = 0; i < range.second; ++i) {
-          // Added sets ranges start in 1, not in 0.
-          length += pts_[range.first + i + 1].size();
-        }
-      }
-
-      return length;
-    };
-
-    auto set = _slp.Span(_curr_var);
-    sort(set.begin(), set.end());
-    set.erase(unique(set.begin(), set.end()), set.end());
-
-    auto expanded_length = Count(left_ranges) + Count(right_ranges);
-
-    auto must_be_sampled = set.size() * storing_factor_ < expanded_length;
-    cache[_curr_var] = must_be_sampled;
-    return must_be_sampled;
-  }
-
- private:
-  const _PTS &pts_;
-  float storing_factor_;
-
-  mutable std::unordered_map<std::size_t, bool> cache;
 };
 
 
