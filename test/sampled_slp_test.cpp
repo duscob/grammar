@@ -57,8 +57,8 @@ TEST_P(SampledSLPLeaves_TF, ComputeSampledSLPLeavesAndItsPTS) {
   Nodes leaves;
   auto &block_size = std::get<2>(GetParam());
 
-  grammar::SampledPTS<> spts;
-  grammar::AddSet<grammar::SampledPTS<>> add_set(spts);
+  grammar::Chunks<> spts;
+  grammar::AddSet<grammar::Chunks<>> add_set(spts);
   grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(leaves), add_set);
 
   // Check leaves
@@ -153,12 +153,12 @@ TEST_P(SampledSLPNodes_TF, ComputeSampledSLPNodes) {
   Nodes nodes;
   auto block_size = std::get<2>(GetParam());
 
-  grammar::SampledPTS<> spts;
-  grammar::AddSet<grammar::SampledPTS<>> add_set(spts);
+  grammar::Chunks<> spts;
+  grammar::AddSet<grammar::Chunks<>> add_set(spts);
   grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(nodes), add_set);
 
   auto storing_factor = std::get<3>(GetParam());
-  grammar::MustBeSampled<grammar::SampledPTS<>> pred(spts, storing_factor);
+  grammar::MustBeSampled<grammar::Chunks<>> pred(spts, storing_factor);
   grammar::ComputeSampledSLPNodes(slp_, block_size, nodes, pred, add_set);
 
   const auto &e_nodes = std::get<4>(GetParam());;
@@ -222,13 +222,21 @@ class SampledSLPMap_TF : public ::testing::TestWithParam<std::tuple<std::size_t,
 };
 
 
-TEST_P(SampledSLPMap_TF, Map) {
-  grammar::SampledSLP<sdsl::sd_vector<>, sdsl::sd_vector<>::rank_1_type, grammar::SampledPTS<>> sslp(slp_, 4, 2.5);
+TEST_P(SampledSLPMap_TF, LeafAndPos) {
+  grammar::SampledSLP<> sslp(slp_, 4, 2.5);
 
   const auto &pos = std::get<2>(GetParam());
 
   for (int i = 0; i < pos.size(); ++i) {
-    EXPECT_EQ(sslp.map(pos[i].first), pos[i].second) << i;
+    EXPECT_EQ(sslp.leaf(pos[i].first), pos[i].second) << i;
+  }
+
+  std::set<std::size_t> leaves;
+  for (int i = 0; i < pos.size(); ++i) {
+    if (leaves.count(pos[i].second) == 0) {
+      EXPECT_EQ(sslp.pos(pos[i].second), pos[i].first) << i;
+      leaves.insert(pos[i].second);
+    }
   }
 }
 
@@ -251,6 +259,7 @@ class SampledSLPParent_TF : public ::testing::TestWithParam<std::tuple<std::size
                                                                        Rules,
                                                                        uint,
                                                                        float,
+                                                                       std::vector<std::size_t>,
                                                                        std::vector<Pair>>> {
  protected:
   grammar::SLP slp_{0};
@@ -273,13 +282,13 @@ TEST_P(SampledSLPParent_TF, Parent) {
   auto block_size = std::get<2>(GetParam());
   auto storing_factor = std::get<3>(GetParam());
 
-  grammar::SampledSLP<sdsl::sd_vector<>, sdsl::sd_vector<>::rank_1_type, grammar::SampledPTS<>>
-      sslp(slp_, block_size, storing_factor);
+  grammar::SampledSLP<> sslp(slp_, block_size, storing_factor);
 
   const auto &pos = std::get<4>(GetParam());
+  const auto &e_res = std::get<5>(GetParam());
 
   for (int i = 0; i < pos.size(); ++i) {
-    EXPECT_EQ(sslp.parent(pos[i].first), pos[i].second) << i;
+    EXPECT_EQ(sslp.parent(pos[i]), e_res[i]) << i;
   }
 }
 
@@ -293,8 +302,32 @@ INSTANTIATE_TEST_CASE_P(
             Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
             4,
             1,
-            std::vector<Pair>{{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 2}, {5, 2}, {6, 2}, {7, 3}, {8, 3}, {9, 4}, {10, 4},
-                              {11, 4}, {12, 5}, {13, 5}, {14, 5}, {15, 5}}
+            std::vector<std::size_t>{0, 1, 5, 7},
+            std::vector<Pair>{{7, 4}, {5, 3}, {6, 4}, {8, 5}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            std::vector<std::size_t>{0, 1},
+            std::vector<Pair>{{6, 5}, {5, 4}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2.5,
+            std::vector<std::size_t>{0, 5},
+            std::vector<Pair>{{5, 4}, {6, 5}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            3,
+            std::vector<std::size_t>{0},
+            std::vector<Pair>{{5, 5}}
         )
     )
 );
