@@ -148,8 +148,9 @@ class SLPWithMetadata : public SLP {
   /**
    * Compute the metadata. This methods must be called before GetData.
    */
-  void ComputeMetadata() {
-    metadata_.Compute(*this);
+  template<typename ...Args>
+  void ComputeMetadata(Args ...args) {
+    metadata_.Compute(this, args...);
   }
 
   /**

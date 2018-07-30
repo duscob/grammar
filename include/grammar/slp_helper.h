@@ -17,10 +17,10 @@ void ConstructSLP(_II begin, _II end, _Encoder encoder, _SLP &slp) {
 }
 
 
-template<typename _II, typename _SLP, typename _Encoder>
-void ComputeSLP(_II begin, _II end, _Encoder encoder, _SLP &slp) {
+template<typename _II, typename _SLP, typename _Encoder, typename ...Args>
+void ComputeSLP(_II begin, _II end, _Encoder encoder, _SLP &slp, Args ...args) {
   ConstructSLP(begin, end, encoder, slp);
-  slp.ComputeMetadata();
+  slp.ComputeMetadata(args...);
 }
 
 
