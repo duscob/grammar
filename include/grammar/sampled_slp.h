@@ -153,6 +153,10 @@ class SampledSLP {
     return b_f[_i - 1];
   }
 
+  auto GetData(std::size_t i) const {
+    return pts_[i];
+  }
+
  private:
   std::size_t l = 0;
   _BVLeafNodesMarks b_l;
