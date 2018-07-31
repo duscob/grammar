@@ -34,7 +34,7 @@ class SLPMD_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules>>
 
 TEST_P(SLPMD_TF, PTSCompute) {
   grammar::PTS<> pts;
-  pts.Compute(slp_);
+  pts.Compute(&slp_);
 
   for (auto i = 1ul; i <= slp_.Variables(); ++i) {
     auto span = slp_.Span(i);
@@ -49,7 +49,7 @@ TEST_P(SLPMD_TF, PTSCompute) {
 
 
 TEST_P(SLPMD_TF, PTSConstructor) {
-  grammar::PTS<> pts(slp_);
+  grammar::PTS<> pts(&slp_);
 
   for (auto i = 1ul; i <= slp_.Variables(); ++i) {
     auto span = slp_.Span(i);
@@ -58,6 +58,21 @@ TEST_P(SLPMD_TF, PTSConstructor) {
 
     const auto &result = pts[i];
     ASSERT_EQ(result.size(), span.size());
+    EXPECT_TRUE(equal(result.begin(), result.end(), span.begin()));
+  }
+}
+
+
+TEST_P(SLPMD_TF, SampledPTSConstructor) {
+  grammar::SampledPTS<grammar::SLP> pts(&slp_, 4, 2);
+
+  for (auto i = 1ul; i <= slp_.Variables(); ++i) {
+    auto span = slp_.Span(i);
+    sort(span.begin(), span.end());
+    span.erase(unique(span.begin(), span.end()), span.end());
+
+    const auto &result = pts[i];
+    ASSERT_EQ(result.size(), span.size()) << i;
     EXPECT_TRUE(equal(result.begin(), result.end(), span.begin()));
   }
 }
@@ -98,12 +113,13 @@ using MyTypes = ::testing::Types<grammar::PTS<>,
                                  grammar::PTS<std::vector<uint64_t>>,
                                  grammar::PTS<sdsl::enc_vector<>>,
                                  grammar::PTS<sdsl::vlc_vector<>>,
-                                 grammar::PTS<sdsl::dac_vector<>>>;
+                                 grammar::PTS<sdsl::dac_vector<>>,
+                                 grammar::SampledPTS<grammar::SLP>>;
 TYPED_TEST_CASE(SLPMDGeneric_TF, MyTypes);
 
 
 TYPED_TEST(SLPMDGeneric_TF, PTSConstructor) {
-  TypeParam pts(this->slp_);
+  TypeParam pts(&this->slp_);
 
   for (auto i = 1ul; i <= this->slp_.Variables(); ++i) {
     auto span = this->slp_.Span(i);
@@ -113,5 +129,25 @@ TYPED_TEST(SLPMDGeneric_TF, PTSConstructor) {
     const auto &result = pts[i];
     ASSERT_EQ(result.size(), span.size());
     EXPECT_TRUE(equal(result.begin(), result.end(), span.begin()));
+  }
+}
+
+
+TEST(SampledPTSBuilder, AddSet) {
+  grammar::Chunks<> spts;
+
+  std::vector<std::vector<uint32_t>> set = {{1, 2, 3}, {2}, {1, 2, 3}};
+
+  for (int i = 0; i < set.size(); ++i) {
+    EXPECT_EQ(spts.AddData(set[i]), i + 1);
+    auto s = spts[i + 1];
+    EXPECT_EQ(s.second - s.first, set[i].size());
+    EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
+  }
+
+  for (int i = 0; i < set.size(); ++i) {
+    auto s = spts[i + 1];
+    EXPECT_EQ(s.second - s.first, set[i].size());
+    EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
   }
 }

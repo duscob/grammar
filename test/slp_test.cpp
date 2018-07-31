@@ -237,15 +237,15 @@ INSTANTIATE_TEST_CASE_P(
 
 
 template<typename T>
-class SLPGeneric_TF : public ::testing::Test {
+class SLPGenericConstruct_TF : public ::testing::Test {
 };
 
 
-using MyTypes = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar::PTS<>>>;
-TYPED_TEST_CASE(SLPGeneric_TF, MyTypes);
+using MyTypesConstruct = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar::PTS<>>>;
+TYPED_TEST_CASE(SLPGenericConstruct_TF, MyTypesConstruct);
 
 
-TYPED_TEST(SLPGeneric_TF, construct) {
+TYPED_TEST(SLPGenericConstruct_TF, Construct) {
   std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
   grammar::RePairEncoder<true> encoder;
 
@@ -262,11 +262,21 @@ TYPED_TEST(SLPGeneric_TF, construct) {
 }
 
 
-TEST(SLPGeneric_TF, compute) {
+template<typename T>
+class SLPGenericCompute_TF : public ::testing::Test {
+};
+
+
+using MyTypesCompute = ::testing::Types<grammar::SLPWithMetadata<grammar::PTS<>>,
+                                        grammar::SLPWithMetadata<grammar::SampledPTS<grammar::SLP>>>;
+TYPED_TEST_CASE(SLPGenericCompute_TF, MyTypesCompute);
+
+
+TYPED_TEST(SLPGenericCompute_TF, Compute) {
   std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
   grammar::RePairEncoder<true> encoder;
 
-  grammar::SLPWithMetadata<grammar::PTS<>> slp(0);
+  TypeParam slp(0);
   grammar::ComputeSLP(data.begin(), data.end(), encoder, slp);
 
   EXPECT_EQ(slp.Sigma(), *std::max_element(data.begin(), data.end()));

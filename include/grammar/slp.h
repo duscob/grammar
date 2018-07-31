@@ -24,7 +24,7 @@ class SLP {
    *
    * @param sigma Size of alphabet == last symbol of alphabet
    */
-  SLP(std::size_t sigma);
+  SLP(std::size_t sigma = 0);
 
   /**
    * Get sigma == size of alphabet == last symbol of alphabet
@@ -107,30 +107,6 @@ class SLP {
 };
 
 
-template<typename _SLP>
-class SLPWrapper {
- public:
-  SLPWrapper(_SLP &slp) : slp_{slp} {}
-
-  void operator()(int sigma) {
-    slp_.Reset(sigma);
-  }
-
-  void operator()(int left, int right, int length) {
-    slp_.AddRule(left, right, length);
-  }
-
- private:
-  _SLP &slp_;
-};
-
-
-template<typename _SLP>
-SLPWrapper<_SLP> BuildSLPWrapper(_SLP &slp) {
-  return SLPWrapper<_SLP>(slp);
-}
-
-
 /**
  * Straight-Line Program With Metadata
  *
@@ -148,8 +124,9 @@ class SLPWithMetadata : public SLP {
   /**
    * Compute the metadata. This methods must be called before GetData.
    */
-  void ComputeMetadata() {
-    metadata_.Compute(*this);
+  template<typename ...Args>
+  void ComputeMetadata(Args ...args) {
+    metadata_.Compute(this, args...);
   }
 
   /**
