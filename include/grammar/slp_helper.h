@@ -53,11 +53,21 @@ void ComputeSLP(_II begin, _II end, _Encoder encoder, _SLP &slp, Args ...args) {
 
 
 template<typename _SLP, typename _OutputIterator>
+std::pair<std::size_t, std::size_t> ComputeSpanCover(const _SLP &slp,
+                      std::size_t begin,
+                      std::size_t end,
+                      _OutputIterator out) {
+  ComputeSpanCover(slp, begin, end, out, slp.Start());
+  return {begin, end};
+}
+
+
+template<typename _SLP, typename _OutputIterator>
 void ComputeSpanCover(const _SLP &slp,
                       std::size_t begin,
                       std::size_t end,
-                      _OutputIterator oit,
-                      std::size_t curr_var = 0) {
+                      _OutputIterator out,
+                      std::size_t curr_var) {
   if (begin >= end)
     return;
 
@@ -65,8 +75,8 @@ void ComputeSpanCover(const _SLP &slp,
     curr_var = slp.Start();
 
   if (0 == begin && slp.SpanLength(curr_var) <= end) {
-    oit = curr_var;
-    ++oit;
+    out = curr_var;
+    ++out;
     return;
   }
 
@@ -74,25 +84,25 @@ void ComputeSpanCover(const _SLP &slp,
   auto left_length = slp.SpanLength(children.first);
 
   if (end <= left_length) {
-    ComputeSpanCover(slp, begin, end, oit, children.first);
+    ComputeSpanCover(slp, begin, end, out, children.first);
     return;
   }
 
   if (left_length <= begin) {
-    ComputeSpanCover(slp, begin - left_length, end - left_length, oit, children.second);
+    ComputeSpanCover(slp, begin - left_length, end - left_length, out, children.second);
     return;
   }
 
-  ComputeSpanCoverBeginning(slp, begin, oit, children.first);
-  ComputeSpanCoverEnding(slp, end - left_length, oit, children.second);
+  ComputeSpanCoverBeginning(slp, begin, out, children.first);
+  ComputeSpanCoverEnding(slp, end - left_length, out, children.second);
 }
 
 
 template<typename _SLP, typename _OutputIterator>
-void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OutputIterator oit, std::size_t curr_var) {
+void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OutputIterator out, std::size_t curr_var) {
   if (begin == 0) {
-    oit = curr_var;
-    ++oit;
+    out = curr_var;
+    ++out;
     return;
   }
 
@@ -100,21 +110,21 @@ void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OutputIterat
   auto left_length = slp.SpanLength(children.first);
 
   if (left_length <= begin) {
-    ComputeSpanCoverBeginning(slp, begin - left_length, oit, children.second);
+    ComputeSpanCoverBeginning(slp, begin - left_length, out, children.second);
     return;
   }
 
-  ComputeSpanCoverBeginning(slp, begin, oit, children.first);
-  oit = children.second;
-  ++oit;
+  ComputeSpanCoverBeginning(slp, begin, out, children.first);
+  out = children.second;
+  ++out;
 }
 
 
 template<typename _SLP, typename _OutputIterator>
-void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OutputIterator oit, std::size_t curr_var) {
+void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OutputIterator out, std::size_t curr_var) {
   if (slp.SpanLength(curr_var) <= end) {
-    oit = curr_var;
-    ++oit;
+    out = curr_var;
+    ++out;
     return;
   }
 
@@ -122,13 +132,40 @@ void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OutputIterator oi
   auto left_length = slp.SpanLength(children.first);
 
   if (end <= left_length) {
-    ComputeSpanCoverEnding(slp, end, oit, children.first);
+    ComputeSpanCoverEnding(slp, end, out, children.first);
     return;
   }
 
-  oit = children.first;
-  ++oit;
-  ComputeSpanCoverEnding(slp, end - left_length, oit, children.second);
+  out = children.first;
+  ++out;
+  ComputeSpanCoverEnding(slp, end - left_length, out, children.second);
+}
+
+
+template<typename _SLP, typename _OutputIterator>
+std::pair<std::size_t, std::size_t> ComputeSpanCoverFromBottom(const _SLP &slp,
+                                                               std::size_t begin,
+                                                               std::size_t end,
+                                                               _OutputIterator out) {
+  auto l = slp.Leaf(begin);
+  if (slp.Position(l) < begin) ++l;
+
+  auto r = slp.Leaf(end) - 1;
+
+  for (auto i = l, next = i + 1; i <= r; i = next, ++next) {
+    while (slp.IsFirstChild(i)) {
+      auto p = slp.Parent(i);
+      if (p.second > r + 1)
+        break;
+      i = p.first;
+      next = p.second;
+    }
+
+    out = i;
+    ++out;
+  }
+
+  return std::make_pair(slp.Position(l), slp.Position(r + 1));
 }
 
 

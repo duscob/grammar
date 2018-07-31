@@ -89,13 +89,14 @@ class SampledSLP {
     l = nodes.size();
 
     {
-      sdsl::bit_vector tmp_bv(_slp.SpanLength(_slp.Start()), 0);
+      sdsl::bit_vector tmp_b_l(_slp.SpanLength(_slp.Start()) + 1, 0);
       std::size_t pos = 0;
       for (const auto &item : nodes) {
-        tmp_bv[pos] = 1;
+        tmp_b_l[pos] = 1;
         pos += _slp.SpanLength(item);
       }
-      b_l = _BVLeafNodesMarks(tmp_bv);
+      tmp_b_l[tmp_b_l.size() - 1] = 1;
+      b_l = _BVLeafNodesMarks(tmp_b_l);
       b_l_rank = _BVLeafNodesMarksRank(&b_l);
       b_l_select = _BVLeafNodesMarksSelect(&b_l);
     }
@@ -135,17 +136,21 @@ class SampledSLP {
     Construct(n, tmp_n);
   }
 
-  std::size_t leaf(std::size_t _pos) const {
+  std::size_t Leaf(std::size_t _pos) const {
     return b_l_rank(_pos + 1);
   }
 
-  std::size_t pos(std::size_t _leaf) const {
+  std::size_t Position(std::size_t _leaf) const {
     return b_l_select(_leaf);
   }
 
-  std::pair<std::size_t, std::size_t> parent(std::size_t _pos) const {
-    auto p = f[b_f_rank(_pos + 1) - 1];
-    return {l + p, n[p]};
+  std::pair<std::size_t, std::size_t> Parent(std::size_t _i) const {
+    auto p = f[b_f_rank(_i) - 1];
+    return {l + p + 1, n[p] + 1};
+  }
+
+  bool IsFirstChild(std::size_t _i) const {
+    return b_f[_i - 1];
   }
 
  private:

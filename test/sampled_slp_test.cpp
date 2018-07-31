@@ -228,13 +228,13 @@ TEST_P(SampledSLPMap_TF, LeafAndPos) {
   const auto &pos = std::get<2>(GetParam());
 
   for (int i = 0; i < pos.size(); ++i) {
-    EXPECT_EQ(sslp.leaf(pos[i].first), pos[i].second) << i;
+    EXPECT_EQ(sslp.Leaf(pos[i].first), pos[i].second) << i;
   }
 
   std::set<std::size_t> leaves;
   for (int i = 0; i < pos.size(); ++i) {
     if (leaves.count(pos[i].second) == 0) {
-      EXPECT_EQ(sslp.pos(pos[i].second), pos[i].first) << i;
+      EXPECT_EQ(sslp.Position(pos[i].second), pos[i].first) << i;
       leaves.insert(pos[i].second);
     }
   }
@@ -278,7 +278,7 @@ class SampledSLPParent_TF : public ::testing::TestWithParam<std::tuple<std::size
 };
 
 
-TEST_P(SampledSLPParent_TF, Parent) {
+TEST_P(SampledSLPParent_TF, FirstChildAndParent) {
   auto block_size = std::get<2>(GetParam());
   auto storing_factor = std::get<3>(GetParam());
 
@@ -288,7 +288,8 @@ TEST_P(SampledSLPParent_TF, Parent) {
   const auto &e_res = std::get<5>(GetParam());
 
   for (int i = 0; i < pos.size(); ++i) {
-    EXPECT_EQ(sslp.parent(pos[i]), e_res[i]) << i;
+    EXPECT_TRUE(sslp.IsFirstChild(pos[i]));
+    EXPECT_EQ(sslp.Parent(pos[i]), e_res[i]);
   }
 }
 
@@ -302,32 +303,140 @@ INSTANTIATE_TEST_CASE_P(
             Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
             4,
             1,
-            std::vector<std::size_t>{0, 1, 5, 7},
-            std::vector<Pair>{{7, 4}, {5, 3}, {6, 4}, {8, 5}}
+            std::vector<std::size_t>{1, 2, 6, 8},
+            std::vector<Pair>{{8, 5}, {6, 4}, {7, 5}, {9, 6}}
         ),
         std::make_tuple(
             4ul,
             Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
             4,
             2,
-            std::vector<std::size_t>{0, 1},
-            std::vector<Pair>{{6, 5}, {5, 4}}
+            std::vector<std::size_t>{1, 2},
+            std::vector<Pair>{{7, 6}, {6, 5}}
         ),
         std::make_tuple(
             4ul,
             Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
             4,
             2.5,
-            std::vector<std::size_t>{0, 5},
-            std::vector<Pair>{{5, 4}, {6, 5}}
+            std::vector<std::size_t>{1, 6},
+            std::vector<Pair>{{6, 5}, {7, 6}}
         ),
         std::make_tuple(
             4ul,
             Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
             4,
             3,
-            std::vector<std::size_t>{0},
-            std::vector<Pair>{{5, 5}}
+            std::vector<std::size_t>{1},
+            std::vector<Pair>{{6, 6}}
+        )
+    )
+);
+
+using Span = std::pair<std::size_t, std::size_t>;
+using SpanCover = std::pair<std::vector<std::size_t>, Span>;
+
+
+class SLPSpanCoverFromBottom_TF : public ::testing::TestWithParam<std::tuple<std::size_t,
+                                                                             Rules,
+                                                                             uint,
+                                                                             float,
+                                                                             Span,
+                                                                             SpanCover>> {
+ protected:
+  grammar::SLPWithMetadata<grammar::PTS<>> slp_{0};
+
+// Sets up the test fixture.
+  void SetUp() override {
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    slp_.Reset(sigma);
+
+    for (auto &&rule : rules) {
+      slp_.AddRule(rule.first, rule.second), rule.first;
+    }
+
+    slp_.ComputeMetadata();
+  }
+};
+
+
+TEST_P(SLPSpanCoverFromBottom_TF, SpanCover) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::SampledSLP<> sslp(slp_, block_size, storing_factor);
+
+  auto &span = std::get<4>(GetParam());
+
+  SpanCover result;
+  result.second = grammar::ComputeSpanCoverFromBottom(sslp, span.first, span.second, back_inserter(result.first));
+
+  auto &eresult = std::get<5>(GetParam());
+  EXPECT_EQ(result, eresult);
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    SLP,
+    SLPSpanCoverFromBottom_TF,
+    ::testing::Values(
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{0, 16},
+            SpanCover{{7}, {0, 16}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{1, 16},
+            SpanCover{{6, 5}, {4, 16}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{0, 15},
+            SpanCover{{1, 6}, {0, 12}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{4, 12},
+            SpanCover{{6}, {4, 12}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{1, 15},
+            SpanCover{{6}, {4, 12}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{0, 10},
+            SpanCover{{1, 2, 3}, {0, 9}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{2, 11},
+            SpanCover{{2, 3}, {4, 9}}
         )
     )
 );
