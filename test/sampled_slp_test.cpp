@@ -223,7 +223,11 @@ class SampledSLPMap_TF : public ::testing::TestWithParam<std::tuple<std::size_t,
 
 
 TEST_P(SampledSLPMap_TF, LeafAndPos) {
-  grammar::SampledSLP<> sslp(slp_, 4, 2.5);
+  grammar::Chunks<> pts;
+  grammar::SampledSLP<> sslp(slp_,
+                             4,
+                             grammar::AddSet<grammar::Chunks<>>(pts),
+                             grammar::MustBeSampled<grammar::Chunks<>>(pts, 2.5));
 
   const auto &pos = std::get<2>(GetParam());
 
@@ -282,7 +286,11 @@ TEST_P(SampledSLPParent_TF, FirstChildAndParent) {
   auto block_size = std::get<2>(GetParam());
   auto storing_factor = std::get<3>(GetParam());
 
-  grammar::SampledSLP<> sslp(slp_, block_size, storing_factor);
+  grammar::Chunks<> pts;
+  grammar::SampledSLP<> sslp(slp_,
+                             block_size,
+                             grammar::AddSet<grammar::Chunks<>>(pts),
+                             grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
 
   const auto &pos = std::get<4>(GetParam());
   const auto &e_res = std::get<5>(GetParam());
@@ -366,7 +374,11 @@ TEST_P(SLPSpanCoverFromBottom_TF, SpanCover) {
   auto block_size = std::get<2>(GetParam());
   auto storing_factor = std::get<3>(GetParam());
 
-  grammar::SampledSLP<> sslp(slp_, block_size, storing_factor);
+  grammar::Chunks<> pts;
+  grammar::SampledSLP<> sslp(slp_,
+                             block_size,
+                             grammar::AddSet<grammar::Chunks<>>(pts),
+                             grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
 
   auto &span = std::get<4>(GetParam());
 

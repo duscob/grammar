@@ -24,7 +24,7 @@ class SLP {
    *
    * @param sigma Size of alphabet == last symbol of alphabet
    */
-  SLP(std::size_t sigma);
+  SLP(std::size_t sigma = 0);
 
   /**
    * Get sigma == size of alphabet == last symbol of alphabet

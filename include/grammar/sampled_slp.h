@@ -73,18 +73,21 @@ template<typename _BVLeafNodesMarks = sdsl::sd_vector<>,
     typename _BVFirstChildren = sdsl::sd_vector<>,
     typename _BVFirstChildrenRank = typename _BVFirstChildren::rank_1_type,
     typename _Parents = sdsl::vlc_vector<>,
-    typename _NextLeaves = sdsl::vlc_vector<>,
-    typename _PTS = grammar::Chunks<>>
+    typename _NextLeaves = sdsl::vlc_vector<>>
 class SampledSLP {
  public:
   SampledSLP() = default;
 
-  template<typename _SLP, typename _SLPValueType = uint32_t>
-  SampledSLP(const _SLP &_slp, uint32_t _block_size, float _storing_factor) {
+  template<typename _SLPValueType = uint32_t, typename _SLP, typename _Action, typename _Predicate>
+  SampledSLP(const _SLP &_slp, uint32_t _block_size, _Action _action, _Predicate _pred) {
+    Compute<_SLPValueType>(_slp, _block_size, _action, _pred);
+  }
+
+  template<typename _SLPValueType = uint32_t, typename _SLP, typename _Action, typename _Predicate>
+  void Compute(const _SLP &_slp, uint32_t _block_size, _Action _action, _Predicate _pred) {
     std::vector<_SLPValueType> nodes;
 
-    AddSet<_PTS> add_set(pts_);
-    ComputeSampledSLPLeaves(_slp, _block_size, back_inserter(nodes), add_set);
+    ComputeSampledSLPLeaves(_slp, _block_size, back_inserter(nodes), _action);
 
     l = nodes.size();
 
@@ -105,29 +108,25 @@ class SampledSLP {
     std::map<std::size_t, std::size_t> tmp_f;
     std::map<std::size_t, std::size_t> tmp_n;
 
-    {
-      grammar::MustBeSampled<_PTS> pred(pts_, _storing_factor);
+    auto build_inner_data = [&_action, &tmp_b_f, &tmp_f, &tmp_n, this](
+        const _SLP &_slp,
+        std::size_t _curr_var,
+        const auto &_nodes,
+        std::size_t _new_node,
+        const auto &_left_ranges,
+        const auto &_right_ranges) {
+      _action(_slp, _curr_var, _nodes, _new_node, _left_ranges, _right_ranges);
 
-      auto build_inner_data = [&add_set, &tmp_b_f, &tmp_f, &tmp_n, this](
-          const _SLP &_slp,
-          std::size_t _curr_var,
-          const auto &_nodes,
-          std::size_t _new_node,
-          const auto &_left_ranges,
-          const auto &_right_ranges) {
-        add_set(_slp, _curr_var, _nodes, _new_node, _left_ranges, _right_ranges);
+      tmp_b_f.emplace_back(0);
+      tmp_b_f[_left_ranges.front().first] = 1;
 
-        tmp_b_f.emplace_back(0);
-        tmp_b_f[_left_ranges.front().first] = 1;
+      auto nn = _new_node - l;
+      tmp_f[_left_ranges.front().first] = nn;
+      auto last_child = _right_ranges.back().first + _right_ranges.back().second;
+      tmp_n[nn] = (last_child <= l) ? last_child : tmp_n[last_child - l - 1];
+    };
 
-        auto nn = _new_node - l;
-        tmp_f[_left_ranges.front().first] = nn;
-        auto last_child = _right_ranges.back().first + _right_ranges.back().second;
-        tmp_n[nn] = (last_child <= l) ? last_child : tmp_n[last_child - l - 1];
-      };
-
-      ComputeSampledSLPNodes(_slp, _block_size, nodes, pred, build_inner_data);
-    }
+    ComputeSampledSLPNodes(_slp, _block_size, nodes, _pred, build_inner_data);
 
     Construct(b_f, tmp_b_f);
     b_f_rank = _BVFirstChildrenRank(&b_f);
@@ -153,10 +152,6 @@ class SampledSLP {
     return b_f[_i - 1];
   }
 
-  auto GetData(std::size_t i) const {
-    return pts_[i];
-  }
-
  private:
   std::size_t l = 0;
   _BVLeafNodesMarks b_l;
@@ -166,8 +161,6 @@ class SampledSLP {
   _BVFirstChildrenRank b_f_rank;
   _Parents f;
   _NextLeaves n;
-
-  _PTS pts_;
 };
 
 }
