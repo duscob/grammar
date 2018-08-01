@@ -7,6 +7,9 @@
 
 #include <vector>
 #include <utility>
+#include <cassert>
+
+#include "io.h"
 
 
 namespace grammar {
@@ -17,21 +20,27 @@ namespace grammar {
  * This data structure represent, roughly, a Context-Free Grammar in Chomsky Normal Form, where all non-terminals
  * appears at left hand of a unique rule.
  */
+template <typename _VariableType = uint32_t, typename _LengthType = uint32_t>
 class SLP {
  public:
+  typedef std::size_t size_type;
+
   /**
    * Constructor
    *
    * @param sigma Size of alphabet == last symbol of alphabet
    */
-  SLP(std::size_t sigma = 0);
+  SLP(_VariableType sigma = 0) : sigma_(sigma) {}
 
   /**
    * Get sigma == size of alphabet == last symbol of alphabet
    *
    * @return sigma
    */
-  std::size_t Sigma() const;
+  auto Sigma() const {
+    return sigma_;
+  }
+
 
   /**
    * Add a new rule to SLP. left & right must be appear before (<= sigma + |rules|)
@@ -42,21 +51,34 @@ class SLP {
    *
    * @return id/index of the new rule
    */
-  std::size_t AddRule(std::size_t left, std::size_t right, std::size_t span_length = 0);
+  _VariableType AddRule(_VariableType left, _VariableType right, _LengthType span_length = 0) {
+    assert(left <= sigma_ + rules_.size() && right <= sigma_ + rules_.size());
+
+    if (span_length == 0)
+      span_length = SpanLength(left) + SpanLength(right);
+
+    rules_.emplace_back(std::make_pair(std::make_pair(left, right), span_length));
+
+    return sigma_ + rules_.size();
+  }
 
   /**
    * Get number of variables == sigma + number of rules
    *
    * @return number of variables
    */
-  std::size_t Variables() const;
+  _VariableType Variables() const {
+    return sigma_ + rules_.size();
+  }
 
   /**
    * Get start/initial rule
    *
    * @return start rule
    */
-  std::size_t Start() const;
+  _VariableType Start() const {
+    return sigma_ + rules_.size();
+  }
 
   /**
    * Get left-hand of rule i
@@ -65,7 +87,9 @@ class SLP {
    *
    * @return left-hand of the rule [left, right]
    */
-  const std::pair<std::size_t, std::size_t> &operator[](std::size_t i) const;
+  const auto &operator[](_VariableType i) const {
+    return rules_.at(i - sigma_ - 1).first;
+  }
 
   /**
    * Is i a terminal symbol?
@@ -74,7 +98,9 @@ class SLP {
    *
    * @return true if i is terminal symbol
    */
-  bool IsTerminal(std::size_t i) const;
+  bool IsTerminal(_VariableType i) const {
+    return i <= sigma_;
+  }
 
   /**
    * Get span of rule i
@@ -83,7 +109,16 @@ class SLP {
    *
    * @return sequence equal to span of rule i
    */
-  std::vector<std::size_t> Span(std::size_t i) const;
+  std::vector<_VariableType> Span(_VariableType i) const {
+    if (IsTerminal(i))
+      return {i};
+
+    auto children = (*this)[i];
+    auto left = Span(children.first);
+    auto right = Span(children.second);
+    left.insert(left.end(), right.begin(), right.end());
+    return left;
+  }
 
   /**
    * Get span length of rule i in terminal symbols.
@@ -92,18 +127,47 @@ class SLP {
    *
    * @return span length
    */
-  std::size_t SpanLength(std::size_t i) const;
+  _LengthType SpanLength(_VariableType i) const {
+    if (i <= sigma_)
+      return 1;
+    else
+      return rules_.at(i - sigma_ - 1).second;
+  }
 
   /**
    * Reset
    *
    * @param sigma Size of alphabet == last symbol of alphabet
    */
-  void Reset(std::size_t sigma);
+  void Reset(_VariableType sigma) {
+    sigma_ = sigma;
+    rules_.clear();
+  }
+
+  bool operator==(const SLP &_slp) const {
+    return sigma_ == _slp.sigma_ && rules_ == _slp.rules_;
+  }
+
+  bool operator!=(const SLP &_slp) const {
+    return !(*this == _slp);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(sigma_, out);
+    written_bytes += sdsl::serialize(rules_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(sigma_, in);
+    sdsl::load(rules_, in);
+  }
 
  protected:
-  std::size_t sigma_;
-  std::vector<std::pair<std::pair<std::size_t, std::size_t>, std::size_t>> rules_;
+  _VariableType sigma_;
+  std::vector<std::pair<std::pair<_VariableType, _VariableType>, _LengthType>> rules_;
 };
 
 
@@ -115,11 +179,11 @@ class SLP {
  *
  * @tparam _Metadata
  */
-template<typename _Metadata>
-class SLPWithMetadata : public SLP {
+template<typename _Metadata, typename _SLP = SLP<>>
+class SLPWithMetadata : public _SLP {
  public:
-  template<typename _Data>
-  SLPWithMetadata(_Data data): SLP(data) {}
+  template<typename ...Args>
+  SLPWithMetadata(Args ...args): _SLP(args...) {}
 
   /**
    * Compute the metadata. This methods must be called before GetData.

@@ -16,7 +16,7 @@
 TEST(SLP, AddRule_Failed) {
   auto sigma = 4ul;
 
-  grammar::SLP slp(sigma);
+  grammar::SLP<> slp(sigma);
 
   EXPECT_DEATH(slp.AddRule(1, sigma + 1), "");
   EXPECT_EQ(slp.AddRule(1, 2), sigma + 1);
@@ -180,7 +180,7 @@ INSTANTIATE_TEST_CASE_P(
     SLP_TF,
     ::testing::Combine(
         ::testing::Values(
-            std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLP>(0)),
+            std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLP<>>(0)),
             std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLPWithMetadata<grammar::PTS<>>>(
                 0))
         ),
@@ -241,7 +241,7 @@ class SLPGenericConstruct_TF : public ::testing::Test {
 };
 
 
-using MyTypesConstruct = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar::PTS<>>>;
+using MyTypesConstruct = ::testing::Types<grammar::SLP<>, grammar::SLPWithMetadata<grammar::PTS<>>>;
 TYPED_TEST_CASE(SLPGenericConstruct_TF, MyTypesConstruct);
 
 
@@ -262,13 +262,38 @@ TYPED_TEST(SLPGenericConstruct_TF, Construct) {
 }
 
 
+TYPED_TEST(SLPGenericConstruct_TF, Serialize) {
+  std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
+  grammar::RePairEncoder<true> encoder;
+
+  TypeParam slp;
+  grammar::ConstructSLP(data.begin(), data.end(), encoder, slp);
+
+  {
+    std::ofstream out("tmp.slp", std::ios::binary);
+    slp.serialize(out);
+    out.close();
+  }
+
+  TypeParam slp_loaded;
+  EXPECT_FALSE(slp == slp_loaded);
+
+  {
+    std::ifstream in("tmp.slp", std::ios::binary);
+    slp_loaded.load(in);
+    in.close();
+  }
+  EXPECT_TRUE(slp == slp_loaded);
+}
+
+
 template<typename T>
 class SLPGenericCompute_TF : public ::testing::Test {
 };
 
 
 using MyTypesCompute = ::testing::Types<grammar::SLPWithMetadata<grammar::PTS<>>,
-                                        grammar::SLPWithMetadata<grammar::SampledPTS<grammar::SLP>>>;
+                                        grammar::SLPWithMetadata<grammar::SampledPTS<grammar::SLP<>>>>;
 TYPED_TEST_CASE(SLPGenericCompute_TF, MyTypesCompute);
 
 

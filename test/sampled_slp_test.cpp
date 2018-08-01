@@ -18,14 +18,14 @@ using Nodes = std::vector<std::size_t>;
 
 class SampledSLPLeaves_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules, std::size_t, Nodes>> {
  protected:
-  grammar::SLP slp_{0};
+  grammar::SLP<> slp_{0};
 
 // Sets up the test fixture.
   void SetUp() override {
     auto &sigma = std::get<0>(GetParam());
     auto &rules = std::get<1>(GetParam());
 
-    slp_ = grammar::SLP(sigma);
+    slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
       slp_.AddRule(rule.first, rule.second), rule.first;
@@ -133,14 +133,14 @@ INSTANTIATE_TEST_CASE_P(
 
 class SampledSLPNodes_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules, uint, float, Nodes>> {
  protected:
-  grammar::SLP slp_{0};
+  grammar::SLP<> slp_{0};
 
 // Sets up the test fixture.
   void SetUp() override {
     auto &sigma = std::get<0>(GetParam());
     auto &rules = std::get<1>(GetParam());
 
-    slp_ = grammar::SLP(sigma);
+    slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
       slp_.AddRule(rule.first, rule.second), rule.first;
@@ -206,14 +206,14 @@ using Pair = std::pair<std::size_t, std::size_t>;
 
 class SampledSLPMap_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules, std::vector<Pair>>> {
  protected:
-  grammar::SLP slp_{0};
+  grammar::SLP<> slp_{0};
 
 // Sets up the test fixture.
   void SetUp() override {
     auto &sigma = std::get<0>(GetParam());
     auto &rules = std::get<1>(GetParam());
 
-    slp_ = grammar::SLP(sigma);
+    slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
       slp_.AddRule(rule.first, rule.second), rule.first;
@@ -266,14 +266,14 @@ class SampledSLPParent_TF : public ::testing::TestWithParam<std::tuple<std::size
                                                                        std::vector<std::size_t>,
                                                                        std::vector<Pair>>> {
  protected:
-  grammar::SLP slp_{0};
+  grammar::SLP<> slp_{0};
 
 // Sets up the test fixture.
   void SetUp() override {
     auto &sigma = std::get<0>(GetParam());
     auto &rules = std::get<1>(GetParam());
 
-    slp_ = grammar::SLP(sigma);
+    slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
       slp_.AddRule(rule.first, rule.second), rule.first;
@@ -299,6 +299,31 @@ TEST_P(SampledSLPParent_TF, FirstChildAndParent) {
     EXPECT_TRUE(sslp.IsFirstChild(pos[i]));
     EXPECT_EQ(sslp.Parent(pos[i]), e_res[i]);
   }
+}
+
+
+TEST_P(SampledSLPParent_TF, Serialization) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::SampledSLP<> sslp(slp_,
+                             block_size,
+                             grammar::AddSet<grammar::Chunks<>>(pts),
+                             grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
+  {
+    std::ofstream out("tmp.sampled_slp", std::ios::binary);
+    sslp.serialize(out);
+  }
+
+  grammar::SampledSLP<> sslp_loaded;
+  EXPECT_FALSE(sslp == sslp_loaded);
+
+  {
+    std::ifstream in("tmp.sampled_slp", std::ios::binary);
+    sslp_loaded.load(in);
+  }
+  EXPECT_TRUE(sslp == sslp_loaded);
 }
 
 

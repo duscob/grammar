@@ -12,6 +12,7 @@
 #include <cassert>
 
 #include "slp_helper.h"
+#include "io.h"
 
 
 namespace grammar {
@@ -22,6 +23,8 @@ namespace grammar {
 template<typename _Container = std::vector<uint32_t>>
 class PTS {
  public:
+  typedef std::size_t size_type;
+
   PTS() = default;
 
   /**
@@ -78,6 +81,35 @@ class PTS {
     return sets_.at(i);
   }
 
+  bool operator==(const PTS<_Container> &_pts) const {
+    if (sets_.size() != _pts.sets_.size())
+      return false;
+
+    bool equal = false;
+    for (int i = 0; i < sets_.size(); ++i) {
+      if (sets_[i].size() != _pts.sets_[i].size()
+          || !std::equal(sets_[i].begin(), sets_[i].end(), _pts.sets_[i].begin()))
+        return false;
+    }
+
+    return true;
+  }
+
+  bool operator!=(const PTS<_Container> &_pts) const {
+    return !(*this == _pts);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(sets_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(sets_, in);
+  }
+
  protected:
   std::vector<_Container> sets_;
 };
@@ -86,6 +118,7 @@ class PTS {
 template<typename _ValueType = uint32_t>
 class Chunks {
  public:
+  typedef std::size_t size_type;
   typedef std::pair<typename std::vector<_ValueType>::const_iterator, typename std::vector<_ValueType>::const_iterator>
       Chunk;
 
@@ -139,6 +172,27 @@ class Chunks {
     return b_d.size();
   }
 
+  bool operator==(const Chunks<_ValueType> &_chunks) const {
+    return d == _chunks.d && b_d == _chunks.b_d;
+  }
+
+  bool operator!=(const Chunks<_ValueType> &_chunks) const {
+    return !(*this == _chunks);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(d, out);
+    written_bytes += sdsl::serialize(b_d, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(d, in);
+    sdsl::load(b_d, in);
+  }
+
  private:
   std::vector<_ValueType> d;
   std::vector<std::size_t> b_d;
@@ -155,6 +209,8 @@ class Chunks {
 template<typename _SLP, typename _ValueType = uint32_t, uint32_t __block_size = 256>
 class SampledPTS {
  public:
+  typedef std::size_t size_type;
+
   SampledPTS() = default;
 
   template<typename _SLPValueType = uint32_t>
@@ -173,8 +229,8 @@ class SampledPTS {
       set.erase(unique(set.begin(), set.end()), set.end());
 
       pts_.AddData(set);
-      if (vars.count(_curr_var) == 0) {
-        vars[_curr_var] = pts_.size();
+      if (vars_.count(_curr_var) == 0) {
+        vars_[_curr_var] = pts_.size();
       }
     };
     ComputeSampledSLPLeaves(*slp_, _block_size, back_inserter(nodes), add_set);
@@ -194,27 +250,64 @@ class SampledPTS {
     ComputeSampledSLPNodes(*slp_, _block_size, nodes, pred, build_inner_data);
   }
 
-  std::vector<_ValueType> operator[](std::size_t i) const {
+  std::vector<_ValueType> operator[](_ValueType i) const {
     std::vector<bool> _visited(i, false);
     return GetSet(i, _visited);
+  }
+
+
+  bool operator==(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_pts) const {
+    return pts_ == _sampled_pts.pts_ && vars_ == _sampled_pts.vars_;
+  }
+
+  bool operator!=(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_pts) const {
+    return !(*this == _sampled_pts);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+    std::size_t written_bytes = 0;
+    written_bytes += pts_.serialize(out);
+    written_bytes += sdsl::serialize(vars_.size(), out);
+    for (const auto &item : vars_) {
+      written_bytes += std::serialize(item, out);
+    }
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(pts_, in);
+    std::size_t size = 0;
+    sdsl::load(size, in);
+    for (int i = 0; i < size; ++i) {
+      typename decltype(vars_)::value_type pair;
+      std::load(pair, in);
+      vars_.insert(pair);
+    }
+  }
+
+  void SetSLP(const _SLP *_slp) {
+    slp_ = _slp;
   }
 
  private:
   const _SLP *slp_ = nullptr;
 
   Chunks<_ValueType> pts_;
-  std::map<_ValueType, std::size_t> vars;
+  std::map<_ValueType, std::size_t> vars_;
 
   template<typename _BitVector>
-  std::vector<_ValueType> GetSet(std::size_t i, _BitVector &_visited) const {
+  std::vector<_ValueType> GetSet(_ValueType i, _BitVector &_visited) const {
     std::vector<_ValueType> set;
-    auto it = vars.find(i);
-    if (it != vars.end()) {
+    auto it = vars_.find(i);
+    if (it != vars_.end()) {
       auto s = pts_[it->second];
       copy(s.first, s.second, back_inserter(set));
     } else {
+      assert(slp_ != nullptr);
+
       if (i <= slp_->Sigma()) {
-        return {_ValueType(i)};
+        return {i};
       }
 
       auto children = (*slp_)[i];

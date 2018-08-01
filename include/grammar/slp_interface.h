@@ -58,7 +58,7 @@ class SLPInterface {
    *
    * @return left-hand of the rule [left, right]
    */
-  virtual const std::pair<std::size_t, std::size_t> &operator[](std::size_t i) const = 0;
+  virtual std::pair<std::size_t, std::size_t> operator[](std::size_t i) const = 0;
 
   /**
    * Is i a terminal symbol?
@@ -156,7 +156,7 @@ class SLPTInterface : public SLPInterface, public _SLP {
    *
    * @return left-hand of the rule [left, right]
    */
-  virtual const std::pair<std::size_t, std::size_t> &operator[](std::size_t i) const {
+  virtual std::pair<std::size_t, std::size_t> operator[](std::size_t i) const {
     return _SLP::operator[](i);
   };
 
@@ -179,7 +179,8 @@ class SLPTInterface : public SLPInterface, public _SLP {
    * @return sequence equal to span of rule i
    */
   virtual std::vector<std::size_t> Span(std::size_t i) const {
-    return _SLP::Span(i);
+    auto span = _SLP::Span(i);
+    return std::vector<std::size_t>(span.begin(), span.end());
   }
 
   /**
