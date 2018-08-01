@@ -16,7 +16,7 @@
 TEST(SLP, AddRule_Failed) {
   auto sigma = 4ul;
 
-  grammar::SLP slp(sigma);
+  grammar::SLP<> slp(sigma);
 
   EXPECT_DEATH(slp.AddRule(1, sigma + 1), "");
   EXPECT_EQ(slp.AddRule(1, 2), sigma + 1);
@@ -180,7 +180,7 @@ INSTANTIATE_TEST_CASE_P(
     SLP_TF,
     ::testing::Combine(
         ::testing::Values(
-            std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLP>(0)),
+            std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLP<>>(0)),
             std::shared_ptr<grammar::SLPInterface>(new grammar::SLPTInterface<grammar::SLPWithMetadata<grammar::PTS<>>>(
                 0))
         ),
@@ -241,7 +241,7 @@ class SLPGenericConstruct_TF : public ::testing::Test {
 };
 
 
-using MyTypesConstruct = ::testing::Types<grammar::SLP, grammar::SLPWithMetadata<grammar::PTS<>>>;
+using MyTypesConstruct = ::testing::Types<grammar::SLP<>, grammar::SLPWithMetadata<grammar::PTS<>>>;
 TYPED_TEST_CASE(SLPGenericConstruct_TF, MyTypesConstruct);
 
 
@@ -293,7 +293,7 @@ class SLPGenericCompute_TF : public ::testing::Test {
 
 
 using MyTypesCompute = ::testing::Types<grammar::SLPWithMetadata<grammar::PTS<>>,
-                                        grammar::SLPWithMetadata<grammar::SampledPTS<grammar::SLP>>>;
+                                        grammar::SLPWithMetadata<grammar::SampledPTS<grammar::SLP<>>>>;
 TYPED_TEST_CASE(SLPGenericCompute_TF, MyTypesCompute);
 
 
