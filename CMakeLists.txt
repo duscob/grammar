@@ -55,7 +55,8 @@ set(SOURCE_FILES include/grammar/re_pair.h
         include/grammar/slp_metadata.h
         include/grammar/slp_interface.h
         include/grammar/slp_helper.h
-        include/grammar/sampled_slp.h)
+        include/grammar/sampled_slp.h
+        include/grammar/io.h)
 
 add_library(grammar ${SOURCE_FILES})
 

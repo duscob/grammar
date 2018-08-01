@@ -8,6 +8,8 @@
 #include <vector>
 #include <utility>
 
+#include "io.h"
+
 
 namespace grammar {
 
@@ -101,6 +103,27 @@ class SLP {
    */
   void Reset(std::size_t sigma);
 
+  bool operator==(const SLP &_slp) const {
+    return sigma_ == _slp.sigma_ && rules_ == _slp.rules_;
+  }
+
+  bool operator!=(const SLP &_slp) const {
+    return !(*this == _slp);
+  }
+
+  std::size_t serialize(std::ostream &out) const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(sigma_, out);
+    written_bytes += sdsl::serialize(rules_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(sigma_, in);
+    sdsl::load(rules_, in);
+  }
+
  protected:
   std::size_t sigma_;
   std::vector<std::pair<std::pair<std::size_t, std::size_t>, std::size_t>> rules_;
@@ -118,8 +141,8 @@ class SLP {
 template<typename _Metadata>
 class SLPWithMetadata : public SLP {
  public:
-  template<typename _Data>
-  SLPWithMetadata(_Data data): SLP(data) {}
+  template<typename ...Args>
+  SLPWithMetadata(Args ...args): SLP(args...) {}
 
   /**
    * Compute the metadata. This methods must be called before GetData.

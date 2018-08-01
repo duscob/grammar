@@ -262,6 +262,31 @@ TYPED_TEST(SLPGenericConstruct_TF, Construct) {
 }
 
 
+TYPED_TEST(SLPGenericConstruct_TF, Serialize) {
+  std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
+  grammar::RePairEncoder<true> encoder;
+
+  TypeParam slp;
+  grammar::ConstructSLP(data.begin(), data.end(), encoder, slp);
+
+  {
+    std::ofstream out("tmp.slp", std::ios::binary);
+    slp.serialize(out);
+    out.close();
+  }
+
+  TypeParam slp_loaded;
+  EXPECT_NE(slp, slp_loaded);
+
+  {
+    std::ifstream in("tmp.slp", std::ios::binary);
+    slp_loaded.load(in);
+    in.close();
+  }
+  EXPECT_EQ(slp, slp_loaded);
+}
+
+
 template<typename T>
 class SLPGenericCompute_TF : public ::testing::Test {
 };
