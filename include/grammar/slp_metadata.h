@@ -251,12 +251,12 @@ class SampledPTS {
   }
 
 
-  bool operator==(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_slp) const {
-    return pts_ == _sampled_slp.pts_ && vars_ == _sampled_slp.vars_;
+  bool operator==(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_pts) const {
+    return pts_ == _sampled_pts.pts_ && vars_ == _sampled_pts.vars_;
   }
 
-  bool operator!=(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_slp) const {
-    return !(*this == _sampled_slp);
+  bool operator!=(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_pts) const {
+    return !(*this == _sampled_pts);
   }
 
   std::size_t serialize(std::ostream &out) const {

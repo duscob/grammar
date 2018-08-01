@@ -302,6 +302,31 @@ TEST_P(SampledSLPParent_TF, FirstChildAndParent) {
 }
 
 
+TEST_P(SampledSLPParent_TF, Serialization) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::SampledSLP<> sslp(slp_,
+                             block_size,
+                             grammar::AddSet<grammar::Chunks<>>(pts),
+                             grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
+  {
+    std::ofstream out("tmp.sampled_slp", std::ios::binary);
+    sslp.serialize(out);
+  }
+
+  grammar::SampledSLP<> sslp_loaded;
+  EXPECT_FALSE(sslp == sslp_loaded);
+
+  {
+    std::ifstream in("tmp.sampled_slp", std::ios::binary);
+    sslp_loaded.load(in);
+  }
+  EXPECT_TRUE(sslp == sslp_loaded);
+}
+
+
 INSTANTIATE_TEST_CASE_P(
     SampledSLP,
     SampledSLPParent_TF,

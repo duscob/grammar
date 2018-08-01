@@ -152,6 +152,55 @@ class SampledSLP {
     return b_f[_i - 1];
   }
 
+  bool operator==(const SampledSLP<_BVLeafNodesMarks,
+                                   _BVLeafNodesMarksRank,
+                                   _BVLeafNodesMarksSelect,
+                                   _BVFirstChildren,
+                                   _BVFirstChildrenRank,
+                                   _Parents,
+                                   _NextLeaves> &_sampled_slp) const {
+    return l == _sampled_slp.l &&
+        b_l.size() == _sampled_slp.b_l.size() && std::equal(b_l.begin(), b_l.end(), _sampled_slp.b_l.begin()) &&
+        b_f.size() == _sampled_slp.b_f.size() && std::equal(b_f.begin(), b_f.end(), _sampled_slp.b_f.begin()) &&
+        f.size() == _sampled_slp.f.size() && std::equal(f.begin(), f.end(), _sampled_slp.f.begin()) &&
+        n.size() == _sampled_slp.n.size() && std::equal(n.begin(), n.end(), _sampled_slp.n.begin());
+  }
+
+  bool operator!=(const SampledSLP<_BVLeafNodesMarks,
+                                   _BVLeafNodesMarksRank,
+                                   _BVLeafNodesMarksSelect,
+                                   _BVFirstChildren,
+                                   _BVFirstChildrenRank,
+                                   _Parents,
+                                   _NextLeaves> &_sampled_slp) const {
+    return !(*this == _sampled_slp);
+  }
+
+  std::size_t serialize(std::ostream &out) const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(l, out);
+    written_bytes += b_l.serialize(out);
+    written_bytes += b_f.serialize(out);
+    written_bytes += sdsl::serialize(f, out);
+    written_bytes += sdsl::serialize(n, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(l, in);
+
+    b_l.load(in);
+    b_l_rank = _BVLeafNodesMarksRank(&b_l);
+    b_l_select = _BVLeafNodesMarksSelect(&b_l);
+
+    b_f.load(in);
+    b_f_rank = _BVFirstChildrenRank(&b_f);
+
+    sdsl::load(f, in);
+    sdsl::load(n, in);
+  }
+
  private:
   std::size_t l = 0;
   _BVLeafNodesMarks b_l;
