@@ -169,6 +169,27 @@ class Chunks {
     return b_d.size();
   }
 
+  bool operator==(const Chunks<_ValueType> &_chunks) const {
+    return d == _chunks.d && b_d == _chunks.b_d;
+  }
+
+  bool operator!=(const Chunks<_ValueType> &_chunks) const {
+    return !(*this == _chunks);
+  }
+
+  std::size_t serialize(std::ostream &out) const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(d, out);
+    written_bytes += sdsl::serialize(b_d, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(d, in);
+    sdsl::load(b_d, in);
+  }
+
  private:
   std::vector<_ValueType> d;
   std::vector<std::size_t> b_d;

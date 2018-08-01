@@ -10,11 +10,11 @@
 #include "grammar/slp_metadata.h"
 
 
-using RightHand = std::pair<std::size_t, std::size_t>;
+using RightHand = std::pair<uint32_t, uint32_t >;
 using Rules = std::vector<RightHand>;
 
 
-class SLPMD_TF : public ::testing::TestWithParam<std::tuple<std::size_t, Rules>> {
+class SLPMD_TF : public ::testing::TestWithParam<std::tuple<uint32_t , Rules>> {
  protected:
   grammar::SLP<> slp_{0};
 
@@ -36,7 +36,7 @@ TEST_P(SLPMD_TF, PTSCompute) {
   grammar::PTS<> pts;
   pts.Compute(&slp_);
 
-  for (auto i = 1ul; i <= slp_.Variables(); ++i) {
+  for (auto i = 1u; i <= slp_.Variables(); ++i) {
     auto span = slp_.Span(i);
     sort(span.begin(), span.end());
     span.erase(unique(span.begin(), span.end()), span.end());
@@ -51,7 +51,7 @@ TEST_P(SLPMD_TF, PTSCompute) {
 TEST_P(SLPMD_TF, PTSConstructor) {
   grammar::PTS<> pts(&slp_);
 
-  for (auto i = 1ul; i <= slp_.Variables(); ++i) {
+  for (auto i = 1u; i <= slp_.Variables(); ++i) {
     auto span = slp_.Span(i);
     sort(span.begin(), span.end());
     span.erase(unique(span.begin(), span.end()), span.end());
@@ -66,7 +66,7 @@ TEST_P(SLPMD_TF, PTSConstructor) {
 TEST_P(SLPMD_TF, SampledPTSConstructor) {
   grammar::SampledPTS<grammar::SLP<>> pts(&slp_, 4, 2);
 
-  for (auto i = 1ul; i <= slp_.Variables(); ++i) {
+  for (auto i = 1u; i <= slp_.Variables(); ++i) {
     auto span = slp_.Span(i);
     sort(span.begin(), span.end());
     span.erase(unique(span.begin(), span.end()), span.end());
@@ -97,7 +97,7 @@ class SLPMDGeneric_TF : public ::testing::Test {
 
 // Sets up the test fixture.
   void SetUp() override {
-    auto sigma = 4ul;
+    auto sigma = 4u;
     Rules rules = {{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}};
 
     slp_ = grammar::SLP<>(sigma);
@@ -121,7 +121,7 @@ TYPED_TEST_CASE(SLPMDGeneric_TF, MyTypes);
 TYPED_TEST(SLPMDGeneric_TF, PTSConstructor) {
   TypeParam pts(&this->slp_);
 
-  for (auto i = 1ul; i <= this->slp_.Variables(); ++i) {
+  for (auto i = 1u; i <= this->slp_.Variables(); ++i) {
     auto span = this->slp_.Span(i);
     sort(span.begin(), span.end());
     span.erase(unique(span.begin(), span.end()), span.end());
@@ -152,20 +152,34 @@ TYPED_TEST(SLPMDGeneric_TF, Serialization) {
 
 
 TEST(SampledPTSBuilder, AddSet) {
-  grammar::Chunks<> spts;
+  grammar::Chunks<> chunks;
 
   std::vector<std::vector<uint32_t>> set = {{1, 2, 3}, {2}, {1, 2, 3}};
 
   for (int i = 0; i < set.size(); ++i) {
-    EXPECT_EQ(spts.AddData(set[i]), i + 1);
-    auto s = spts[i + 1];
+    EXPECT_EQ(chunks.AddData(set[i]), i + 1);
+    auto s = chunks[i + 1];
     EXPECT_EQ(s.second - s.first, set[i].size());
     EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
   }
 
   for (int i = 0; i < set.size(); ++i) {
-    auto s = spts[i + 1];
+    auto s = chunks[i + 1];
     EXPECT_EQ(s.second - s.first, set[i].size());
     EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
   }
+
+  {
+    std::ofstream out("tmp.slp_metadata", std::ios::binary);
+    chunks.serialize(out);
+  }
+
+  grammar::Chunks<> chunks_loaded;
+  EXPECT_FALSE(chunks == chunks_loaded);
+
+  {
+    std::ifstream in("tmp.slp_metadata", std::ios::binary);
+    chunks_loaded.load(in);
+  }
+  EXPECT_TRUE(chunks == chunks_loaded);
 }
