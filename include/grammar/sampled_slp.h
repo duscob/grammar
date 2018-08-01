@@ -76,6 +76,8 @@ template<typename _BVLeafNodesMarks = sdsl::sd_vector<>,
     typename _NextLeaves = sdsl::vlc_vector<>>
 class SampledSLP {
  public:
+  typedef std::size_t size_type;
+
   SampledSLP() = default;
 
   template<typename _SLPValueType = uint32_t, typename _SLP, typename _Action, typename _Predicate>
@@ -176,7 +178,7 @@ class SampledSLP {
     return !(*this == _sampled_slp);
   }
 
-  std::size_t serialize(std::ostream &out) const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(l, out);
     written_bytes += b_l.serialize(out);

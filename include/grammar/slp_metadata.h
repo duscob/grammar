@@ -23,6 +23,8 @@ namespace grammar {
 template<typename _Container = std::vector<uint32_t>>
 class PTS {
  public:
+  typedef std::size_t size_type;
+
   PTS() = default;
 
   /**
@@ -97,7 +99,7 @@ class PTS {
     return !(*this == _pts);
   }
 
-  std::size_t serialize(std::ostream &out) const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(sets_, out);
 
@@ -116,6 +118,7 @@ class PTS {
 template<typename _ValueType = uint32_t>
 class Chunks {
  public:
+  typedef std::size_t size_type;
   typedef std::pair<typename std::vector<_ValueType>::const_iterator, typename std::vector<_ValueType>::const_iterator>
       Chunk;
 
@@ -177,7 +180,7 @@ class Chunks {
     return !(*this == _chunks);
   }
 
-  std::size_t serialize(std::ostream &out) const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(d, out);
     written_bytes += sdsl::serialize(b_d, out);
@@ -206,6 +209,8 @@ class Chunks {
 template<typename _SLP, typename _ValueType = uint32_t, uint32_t __block_size = 256>
 class SampledPTS {
  public:
+  typedef std::size_t size_type;
+
   SampledPTS() = default;
 
   template<typename _SLPValueType = uint32_t>
@@ -259,7 +264,7 @@ class SampledPTS {
     return !(*this == _sampled_pts);
   }
 
-  std::size_t serialize(std::ostream &out) const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
     std::size_t written_bytes = 0;
     written_bytes += pts_.serialize(out);
     written_bytes += sdsl::serialize(vars_.size(), out);

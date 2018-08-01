@@ -23,6 +23,8 @@ namespace grammar {
 template <typename _VariableType = uint32_t, typename _LengthType = uint32_t>
 class SLP {
  public:
+  typedef std::size_t size_type;
+
   /**
    * Constructor
    *
@@ -150,7 +152,7 @@ class SLP {
     return !(*this == _slp);
   }
 
-  std::size_t serialize(std::ostream &out) const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(sigma_, out);
     written_bytes += sdsl::serialize(rules_, out);
