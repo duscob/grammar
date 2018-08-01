@@ -224,8 +224,8 @@ class SampledPTS {
       set.erase(unique(set.begin(), set.end()), set.end());
 
       pts_.AddData(set);
-      if (vars.count(_curr_var) == 0) {
-        vars[_curr_var] = pts_.size();
+      if (vars_.count(_curr_var) == 0) {
+        vars_[_curr_var] = pts_.size();
       }
     };
     ComputeSampledSLPLeaves(*slp_, _block_size, back_inserter(nodes), add_set);
@@ -245,27 +245,64 @@ class SampledPTS {
     ComputeSampledSLPNodes(*slp_, _block_size, nodes, pred, build_inner_data);
   }
 
-  std::vector<_ValueType> operator[](std::size_t i) const {
+  std::vector<_ValueType> operator[](_ValueType i) const {
     std::vector<bool> _visited(i, false);
     return GetSet(i, _visited);
+  }
+
+
+  bool operator==(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_slp) const {
+    return pts_ == _sampled_slp.pts_ && vars_ == _sampled_slp.vars_;
+  }
+
+  bool operator!=(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_slp) const {
+    return !(*this == _sampled_slp);
+  }
+
+  std::size_t serialize(std::ostream &out) const {
+    std::size_t written_bytes = 0;
+    written_bytes += pts_.serialize(out);
+    written_bytes += sdsl::serialize(vars_.size(), out);
+    for (const auto &item : vars_) {
+      written_bytes += std::serialize(item, out);
+    }
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(pts_, in);
+    std::size_t size = 0;
+    sdsl::load(size, in);
+    for (int i = 0; i < size; ++i) {
+      typename decltype(vars_)::value_type pair;
+      std::load(pair, in);
+      vars_.insert(pair);
+    }
+  }
+
+  void SetSLP(const _SLP *_slp) {
+    slp_ = _slp;
   }
 
  private:
   const _SLP *slp_ = nullptr;
 
   Chunks<_ValueType> pts_;
-  std::map<_ValueType, std::size_t> vars;
+  std::map<_ValueType, std::size_t> vars_;
 
   template<typename _BitVector>
-  std::vector<_ValueType> GetSet(std::size_t i, _BitVector &_visited) const {
+  std::vector<_ValueType> GetSet(_ValueType i, _BitVector &_visited) const {
     std::vector<_ValueType> set;
-    auto it = vars.find(i);
-    if (it != vars.end()) {
+    auto it = vars_.find(i);
+    if (it != vars_.end()) {
       auto s = pts_[it->second];
       copy(s.first, s.second, back_inserter(set));
     } else {
+      assert(slp_ != nullptr);
+
       if (i <= slp_->Sigma()) {
-        return {_ValueType(i)};
+        return {i};
       }
 
       auto children = (*slp_)[i];

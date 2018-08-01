@@ -113,8 +113,8 @@ using MyTypes = ::testing::Types<grammar::PTS<>,
                                  grammar::PTS<std::vector<uint64_t>>,
                                  grammar::PTS<sdsl::enc_vector<>>,
                                  grammar::PTS<sdsl::vlc_vector<>>,
-                                 grammar::PTS<sdsl::dac_vector<>>/*,
-                                 grammar::SampledPTS<grammar::SLP<>>*/>; //todo uncomment this type
+                                 grammar::PTS<sdsl::dac_vector<>>,
+                                 grammar::SampledPTS<grammar::SLP<>>>;
 TYPED_TEST_CASE(SLPMDGeneric_TF, MyTypes);
 
 
