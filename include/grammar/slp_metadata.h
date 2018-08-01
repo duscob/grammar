@@ -12,6 +12,7 @@
 #include <cassert>
 
 #include "slp_helper.h"
+#include "io.h"
 
 
 namespace grammar {
@@ -76,6 +77,35 @@ class PTS {
    */
   const _Container &operator[](std::size_t i) const {
     return sets_.at(i);
+  }
+
+  bool operator==(const PTS<_Container> &_pts) const {
+    if (sets_.size() != _pts.sets_.size())
+      return false;
+
+    bool equal = false;
+    for (int i = 0; i < sets_.size(); ++i) {
+      if (sets_[i].size() != _pts.sets_[i].size()
+          || !std::equal(sets_[i].begin(), sets_[i].end(), _pts.sets_[i].begin()))
+        return false;
+    }
+
+    return true;
+  }
+
+  bool operator!=(const PTS<_Container> &_pts) const {
+    return !(*this == _pts);
+  }
+
+  std::size_t serialize(std::ostream &out) const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(sets_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(sets_, in);
   }
 
  protected:

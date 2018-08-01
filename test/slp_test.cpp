@@ -276,14 +276,14 @@ TYPED_TEST(SLPGenericConstruct_TF, Serialize) {
   }
 
   TypeParam slp_loaded;
-  EXPECT_NE(slp, slp_loaded);
+  EXPECT_FALSE(slp == slp_loaded);
 
   {
     std::ifstream in("tmp.slp", std::ios::binary);
     slp_loaded.load(in);
     in.close();
   }
-  EXPECT_EQ(slp, slp_loaded);
+  EXPECT_TRUE(slp == slp_loaded);
 }
 
 
