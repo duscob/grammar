@@ -8,13 +8,14 @@
 
 #include "grammar/slp.h"
 #include "grammar/slp_metadata.h"
+#include "grammar/re_pair.h"
 
 
-using RightHand = std::pair<uint32_t, uint32_t >;
+using RightHand = std::pair<uint32_t, uint32_t>;
 using Rules = std::vector<RightHand>;
 
 
-class SLPMD_TF : public ::testing::TestWithParam<std::tuple<uint32_t , Rules>> {
+class SLPMD_TF : public ::testing::TestWithParam<std::tuple<uint32_t, Rules>> {
  protected:
   grammar::SLP<> slp_{0};
 
@@ -151,22 +152,28 @@ TYPED_TEST(SLPMDGeneric_TF, Serialization) {
 }
 
 
-TEST(SampledPTSBuilder, AddSet) {
+using Sets = std::vector<std::vector<uint32_t>>;
+
+
+class Chunks_TF : public ::testing::TestWithParam<std::tuple<Sets, Sets>> {};
+
+
+TEST_P(Chunks_TF, AddData) {
+  const auto &sets = std::get<0>(GetParam());
+
   grammar::Chunks<> chunks;
 
-  std::vector<std::vector<uint32_t>> set = {{1, 2, 3}, {2}, {1, 2, 3}};
-
-  for (int i = 0; i < set.size(); ++i) {
-    EXPECT_EQ(chunks.AddData(set[i]), i + 1);
+  for (int i = 0; i < sets.size(); ++i) {
+    EXPECT_EQ(chunks.AddData(sets[i]), i + 1);
     auto s = chunks[i + 1];
-    EXPECT_EQ(s.second - s.first, set[i].size());
-    EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
+    ASSERT_EQ(s.second - s.first, sets[i].size());
+    EXPECT_TRUE(std::equal(s.first, s.second, sets[i].begin()));
   }
 
-  for (int i = 0; i < set.size(); ++i) {
+  for (int i = 0; i < sets.size(); ++i) {
     auto s = chunks[i + 1];
-    EXPECT_EQ(s.second - s.first, set[i].size());
-    EXPECT_TRUE(std::equal(s.first, s.second, set[i].begin()));
+    ASSERT_EQ(s.second - s.first, sets[i].size());
+    EXPECT_TRUE(std::equal(s.first, s.second, sets[i].begin()));
   }
 
   {
@@ -183,3 +190,80 @@ TEST(SampledPTSBuilder, AddSet) {
   }
   EXPECT_TRUE(chunks == chunks_loaded);
 }
+
+
+TEST_P(Chunks_TF, CompactChunk) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.AddData(item);
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::CompactChunks<grammar::SLP<>> compact_chunks(chunks.gbegin(), chunks.gend(), chunks, encoder);
+
+  const auto &e_sets = std::get<1>(GetParam());
+  EXPECT_EQ(compact_chunks.size(), e_sets.size());
+
+  for (int i = 0; i < sets.size(); ++i) {
+    auto s = compact_chunks[i + 1];
+    ASSERT_EQ(s.size(), e_sets[i].size()) << i;
+    EXPECT_TRUE(std::equal(s.first, s.second, e_sets[i].begin()));
+  }
+}
+
+
+TEST_P(Chunks_TF, Serialization) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.AddData(item);
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::CompactChunks<grammar::SLP<>> compact_chunks(chunks.gbegin(), chunks.gend(), chunks, encoder);
+
+  {
+    std::ofstream out("tmp.slp_metadata", std::ios::binary);
+    compact_chunks.serialize(out);
+  }
+
+  grammar::CompactChunks<grammar::SLP<>> compact_chunks_loaded;
+  EXPECT_FALSE(compact_chunks == compact_chunks_loaded);
+
+  {
+    std::ifstream in("tmp.slp_metadata", std::ios::binary);
+    compact_chunks_loaded.load(in);
+  }
+  EXPECT_TRUE(compact_chunks == compact_chunks_loaded);
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    SLPMetadata,
+    Chunks_TF,
+    ::testing::Values(
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}},
+            Sets{{6, 4}, {6}, {3}, {6}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1, 2}, {3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}},
+            Sets{{5}, {3, 4}, {6}, {3}, {6}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1}, {2}, {3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}},
+            Sets{{1}, {2}, {3, 4}, {6}, {3}, {6}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1}, {2}, {3, 4}, {1, 2, 3}, {3, 1}, {2, 3}, {1, 2}},
+            Sets{{1}, {2}, {3, 4}, {6}, {3, 1}, {2, 3}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1}, {2}, {3, 4}, {1, 2, 3}, {3, 1}, {2, 3, 1}, {2}},
+            Sets{{1}, {2}, {3, 4}, {6}, {3, 1}, {2, 3, 1}, {2}}
+        )
+    )
+);

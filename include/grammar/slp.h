@@ -24,6 +24,7 @@ template <typename _VariableType = uint32_t, typename _LengthType = uint32_t>
 class SLP {
  public:
   typedef std::size_t size_type;
+  typedef _VariableType VariableType;
 
   /**
    * Constructor

@@ -474,6 +474,14 @@ INSTANTIATE_TEST_CASE_P(
             2,
             Span{2, 11},
             SpanCover{{2, 3}, {4, 9}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}, {3, 3}, {2, 5}, {4, 6}, {8, 1}, {6, 7}, {11, 6}, {9, 12}, {13, 10}},
+            4,
+            2,
+            Span{1, 3},
+            SpanCover{{}, {4, 0}}
         )
     )
 );

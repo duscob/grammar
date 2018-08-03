@@ -99,7 +99,7 @@ class PTS {
     return !(*this == _pts);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(sets_, out);
 
@@ -168,6 +168,14 @@ class Chunks {
     return std::make_pair(d.cbegin() + b_d[i - 1], (i < b_d.size()) ? d.cbegin() + b_d[i] : d.cend());
   }
 
+  auto gbegin() const {
+    return d.begin();
+  }
+
+  auto gend() const {
+    return d.end();
+  }
+
   auto size() const {
     return b_d.size();
   }
@@ -180,7 +188,7 @@ class Chunks {
     return !(*this == _chunks);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(d, out);
     written_bytes += sdsl::serialize(b_d, out);
@@ -193,7 +201,7 @@ class Chunks {
     sdsl::load(b_d, in);
   }
 
- private:
+ protected:
   std::vector<_ValueType> d;
   std::vector<std::size_t> b_d;
 };
@@ -255,7 +263,6 @@ class SampledPTS {
     return GetSet(i, _visited);
   }
 
-
   bool operator==(const SampledPTS<_SLP, _ValueType, __block_size> &_sampled_pts) const {
     return pts_ == _sampled_pts.pts_ && vars_ == _sampled_pts.vars_;
   }
@@ -264,7 +271,7 @@ class SampledPTS {
     return !(*this == _sampled_pts);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += pts_.serialize(out);
     written_bytes += sdsl::serialize(vars_.size(), out);
@@ -323,6 +330,93 @@ class SampledPTS {
   }
 };
 
-}
+
+template<typename _SLP>
+class CompactChunks : public Chunks<typename _SLP::VariableType> {
+ public:
+  CompactChunks() = default;
+
+  template<typename _II, typename _Chunks, typename _Encoder>
+  CompactChunks(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
+    Compute(_begin, _end, _chunks, _encoder);
+  }
+
+  template<typename _II, typename _Chunks, typename _Encoder>
+  void Compute(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
+
+    std::vector<typename _SLP::VariableType> cseq;
+
+    auto report_cseq = [&cseq](auto v) {
+      cseq.emplace_back(v);
+    };
+
+    auto wrapper = BuildSLPWrapper(slp_);
+    _encoder.Encode(_begin, _end, wrapper, report_cseq);
+
+    this->b_d.reserve(_chunks.size());
+
+    std::size_t pos = 0;
+    std::size_t inner_pos = 0;
+    for (int i = 1; i <= _chunks.size(); ++i) {
+      this->b_d.emplace_back(this->d.size());
+
+      auto size = _chunks[i].size();
+
+      if (inner_pos != 0) {
+        // Find inner variables
+        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, std::back_inserter(this->d), cseq[pos]);
+
+        auto rest = slp_.SpanLength(cseq[pos]) - inner_pos;
+        if (rest <= size) {
+          // Get to the end of current variable's expansion
+          size -= rest;
+          ++pos;
+        } else {
+          // Still remain elements in the current variable's expansion
+          inner_pos += size;
+          continue;
+        }
+      }
+
+      std::size_t var_len;
+      while (pos < cseq.size() && (var_len = slp_.SpanLength(cseq[pos])) <= size) {
+        // Add complete covered variables
+        this->d.emplace_back(cseq[pos]);
+
+        size -= var_len;
+        ++pos;
+      }
+
+      if (0 < size) {
+        // Find inner variables
+        grammar::ComputeSpanCoverEnding(slp_, size, std::back_inserter(this->d), cseq[pos]);
+      }
+
+      inner_pos = size;
+    }
+  }
+
+  bool operator==(const CompactChunks<_SLP> &_chunks) const {
+    return Chunks<typename _SLP::VariableType>::operator==(_chunks) && slp_ == _chunks.slp_;
+  }
+
+  bool operator!=(const CompactChunks<_SLP> &_compact_chunks) const {
+    return !(*this == _compact_chunks);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+    return Chunks<typename _SLP::VariableType>::serialize(out, v, name) + sdsl::serialize(slp_, out);
+  }
+
+  void load(std::istream &in) {
+    Chunks<typename _SLP::VariableType>::load(in);
+    sdsl::load(slp_, in);
+  }
+
+ private:
+  _SLP slp_;
+};
+
+};
 
 #endif //GRAMMAR_SLP_METADATA_H
