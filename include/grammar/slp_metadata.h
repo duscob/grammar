@@ -332,10 +332,17 @@ class SampledPTS {
 
 
 template<typename _SLP>
-class CompactChunks: public Chunks<typename _SLP::VariableType> {
+class CompactChunks : public Chunks<typename _SLP::VariableType> {
  public:
+  CompactChunks() = default;
+
   template<typename _II, typename _Chunks, typename _Encoder>
   CompactChunks(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
+    Compute(_begin, _end, _chunks, _encoder);
+  }
+
+  template<typename _II, typename _Chunks, typename _Encoder>
+  void Compute(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
 
     std::vector<typename _SLP::VariableType> cseq;
 
@@ -387,6 +394,23 @@ class CompactChunks: public Chunks<typename _SLP::VariableType> {
 
       inner_pos = size;
     }
+  }
+
+  bool operator==(const CompactChunks<_SLP> &_chunks) const {
+    return Chunks<typename _SLP::VariableType>::operator==(_chunks) && slp_ == _chunks.slp_;
+  }
+
+  bool operator!=(const CompactChunks<_SLP> &_compact_chunks) const {
+    return !(*this == _compact_chunks);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+    return Chunks<typename _SLP::VariableType>::serialize(out, v, name) + sdsl::serialize(slp_, out);
+  }
+
+  void load(std::istream &in) {
+    Chunks<typename _SLP::VariableType>::load(in);
+    sdsl::load(slp_, in);
   }
 
  private:

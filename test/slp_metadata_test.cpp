@@ -214,6 +214,33 @@ TEST_P(Chunks_TF, CompactChunk) {
 }
 
 
+TEST_P(Chunks_TF, Serialization) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.AddData(item);
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::CompactChunks<grammar::SLP<>> compact_chunks(chunks.gbegin(), chunks.gend(), chunks, encoder);
+
+  {
+    std::ofstream out("tmp.slp_metadata", std::ios::binary);
+    compact_chunks.serialize(out);
+  }
+
+  grammar::CompactChunks<grammar::SLP<>> compact_chunks_loaded;
+  EXPECT_FALSE(compact_chunks == compact_chunks_loaded);
+
+  {
+    std::ifstream in("tmp.slp_metadata", std::ios::binary);
+    compact_chunks_loaded.load(in);
+  }
+  EXPECT_TRUE(compact_chunks == compact_chunks_loaded);
+}
+
+
 INSTANTIATE_TEST_CASE_P(
     SLPMetadata,
     Chunks_TF,
