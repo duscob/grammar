@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <type_traits>
 #include <cassert>
 
 #include "slp_helper.h"
@@ -115,23 +116,50 @@ class PTS {
 };
 
 
-template<typename _ValueType = uint32_t>
+template<typename _X, typename _Y>
+typename std::enable_if<std::is_constructible<_X, _Y>::value>::type Construct(_X &_x, const _Y &_y) {
+  _x = _X(_y);
+}
+
+
+template<typename _X, typename _Y>
+typename std::enable_if<!std::is_constructible<_X, _Y>::value>::type Construct(_X &_x, const _Y &_y) {
+  _x = _X(_y.size());
+  std::copy(_y.begin(), _y.end(), _x.begin());
+}
+
+
+template<typename _ObjContainer = std::vector<uint32_t>, typename _PosContainer = std::vector<uint32_t>>
 class Chunks {
  public:
-  typedef std::size_t size_type;
-  typedef std::pair<typename std::vector<_ValueType>::const_iterator, typename std::vector<_ValueType>::const_iterator>
-      Chunk;
+  Chunks() = default;
+
+  template<typename __ObjContainer, typename __PosContainer, typename _ActionObj = NoAction, typename _ActionPos = NoAction>
+  Chunks(const Chunks<__ObjContainer, __PosContainer> &_chunks,
+         _ActionObj _action_obj = NoAction(),
+         _ActionPos _action_pos = NoAction()) {
+    Construct(objs_, _chunks.GetObjects());
+    _action_obj(objs_);
+    Construct(pos_, _chunks.GetChunksPositions());
+    _action_pos(pos_);
+  }
+
+  auto size() const {
+    return pos_.size();
+  }
+
+  typedef std::pair<typename _ObjContainer::const_iterator, typename _ObjContainer::const_iterator> Chunk;
 
   class FakeContainer : public Chunk {
    public:
     FakeContainer(Chunk &&_chunk) : Chunk(_chunk) {}
 
     auto begin() const {
-      return Chunks<_ValueType>::Chunk::first;
+      return Chunk::first;
     }
 
     auto end() const {
-      return Chunks<_ValueType>::Chunk::second;
+      return Chunk::second;
     }
 
     auto size() const {
@@ -139,71 +167,121 @@ class Chunks {
     }
   };
 
-  template<typename _Data>
-  std::size_t AddData(const _Data &_data) {
-    return (*this)(begin(_data), end(_data));
+  FakeContainer operator[](std::size_t i) const {
+    assert(i <= pos_.size());
+
+    return std::make_pair(objs_.begin() + pos_[i - 1], (i < pos_.size()) ? objs_.begin() + pos_[i] : objs_.end());
+  }
+
+  const _ObjContainer &GetObjects() const {
+    return objs_;
+  }
+
+  const _PosContainer &GetChunksPositions() const {
+    return pos_;
+  }
+
+ private:
+// Primary template with a static assertion
+// for a meaningful error message
+// if it ever gets instantiated.
+// We could leave it undefined if we didn't care.
+  template<typename, typename T>
+  struct has_push_back {
+    static_assert(
+        std::integral_constant<T, false>::value,
+        "Second template parameter needs to be of function type.");
+  };
+
+// specialization that does the checking
+  template<typename C, typename Ret, typename... Args>
+  struct has_push_back<C, Ret(Args...)> {
+   private:
+    template<typename T>
+    static constexpr auto check(T *)
+    -> typename std::is_same<
+        decltype(std::declval<T>().push_back(std::declval<Args>()...)),
+        Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    >::type;  // attempt to call it and see if the return type is correct
+
+    template<typename>
+    static constexpr std::false_type check(...);
+
+    typedef decltype(check<C>(0)) type;
+
+   public:
+    static constexpr bool value = type::value;
+  };
+
+ public:
+  template<typename _Value>
+  auto Insert(_Value _value)
+  -> typename std::enable_if<
+      std::integral_constant<
+          bool,
+          has_push_back<_PosContainer, void(typename _ObjContainer::size_type)>::value
+              && has_push_back<_ObjContainer, void(_Value)>::value
+      >::value,
+      typename _PosContainer::size_type
+  >::type {
+    pos_.push_back(objs_.size());
+    objs_.push_back(_value);
+
+    return pos_.size();
   }
 
   template<typename _II>
-  std::size_t AddData(_II _begin, _II _end) {
-    return (*this)(_begin, _end);
-  }
-
-  template<typename _II>
-  std::size_t operator()(_II _begin, _II _end) {
-    if (_begin == _end)
+  auto Insert(_II _first, _II _last)
+  -> typename std::enable_if<
+      std::integral_constant<
+          bool,
+          has_push_back<_PosContainer, void(typename _ObjContainer::size_type)>::value
+              && has_push_back<_ObjContainer, void(decltype(*_first))>::value
+      >::value,
+      typename _PosContainer::size_type
+  >::type {
+    if (_first == _last)
       return 0;
 
-    b_d.push_back(d.size());
-    for (auto it = _begin; it != _end; ++it) {
-      d.push_back(*it);
+    pos_.push_back(objs_.size());
+    for (auto it = _first; it != _last; ++it) {
+      objs_.push_back(*it);
     }
 
-    return b_d.size();
+    return pos_.size();
   }
 
-  FakeContainer operator[](std::size_t i) const {
-    assert(i <= b_d.size());
-
-    return std::make_pair(d.cbegin() + b_d[i - 1], (i < b_d.size()) ? d.cbegin() + b_d[i] : d.cend());
+  template<typename __ObjContainer, typename __PosContainer>
+  bool operator==(const Chunks<__ObjContainer, __PosContainer> &_chunks) const {
+    return objs_.size() == _chunks.objs_.size()
+        && std::equal(objs_.begin(), objs_.end(), _chunks.objs_.begin())
+        && pos_.size() == _chunks.pos_.size()
+        && std::equal(pos_.begin(), pos_.end(), _chunks.pos_.begin());
   }
 
-  auto gbegin() const {
-    return d.begin();
-  }
-
-  auto gend() const {
-    return d.end();
-  }
-
-  auto size() const {
-    return b_d.size();
-  }
-
-  bool operator==(const Chunks<_ValueType> &_chunks) const {
-    return d == _chunks.d && b_d == _chunks.b_d;
-  }
-
-  bool operator!=(const Chunks<_ValueType> &_chunks) const {
+  template<typename __ObjContainer, typename __PosContainer>
+  bool operator!=(const Chunks<__ObjContainer, __PosContainer> &_chunks) const {
     return !(*this == _chunks);
   }
 
+  typedef std::size_t size_type;
+
   std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
     std::size_t written_bytes = 0;
-    written_bytes += sdsl::serialize(d, out);
-    written_bytes += sdsl::serialize(b_d, out);
+    written_bytes += sdsl::serialize(objs_, out);
+    written_bytes += sdsl::serialize(pos_, out);
 
     return written_bytes;
   }
 
   void load(std::istream &in) {
-    sdsl::load(d, in);
-    sdsl::load(b_d, in);
+    sdsl::load(objs_, in);
+    sdsl::load(pos_, in);
   }
 
  protected:
-  std::vector<_ValueType> d;
-  std::vector<std::size_t> b_d;
+  _ObjContainer objs_;
+  _PosContainer pos_;
 };
 
 
@@ -236,7 +314,7 @@ class SampledPTS {
       sort(set.begin(), set.end());
       set.erase(unique(set.begin(), set.end()), set.end());
 
-      pts_.AddData(set);
+      pts_.Insert(set.begin(), set.end());
       if (vars_.count(_curr_var) == 0) {
         vars_[_curr_var] = pts_.size();
       }
@@ -300,7 +378,7 @@ class SampledPTS {
  private:
   const _SLP *slp_ = nullptr;
 
-  Chunks<_ValueType> pts_;
+  Chunks<std::vector<_ValueType>> pts_;
   std::map<_ValueType, std::size_t> vars_;
 
   template<typename _BitVector>
@@ -332,12 +410,12 @@ class SampledPTS {
 
 
 template<typename _SLP>
-class CompactChunks : public Chunks<typename _SLP::VariableType> {
+class GrammarCompressedChunks : public Chunks<std::vector<typename _SLP::VariableType>> {
  public:
-  CompactChunks() = default;
+  GrammarCompressedChunks() = default;
 
   template<typename _II, typename _Chunks, typename _Encoder>
-  CompactChunks(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
+  GrammarCompressedChunks(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
     Compute(_begin, _end, _chunks, _encoder);
   }
 
@@ -353,18 +431,18 @@ class CompactChunks : public Chunks<typename _SLP::VariableType> {
     auto wrapper = BuildSLPWrapper(slp_);
     _encoder.Encode(_begin, _end, wrapper, report_cseq);
 
-    this->b_d.reserve(_chunks.size());
+    this->pos_.reserve(_chunks.size());
 
     std::size_t pos = 0;
     std::size_t inner_pos = 0;
-    for (int i = 1; i <= _chunks.size(); ++i) {
-      this->b_d.emplace_back(this->d.size());
+    for (int i = 1; i <= _chunks.size(); ++i, std::sort(this->objs_.begin() + this->pos_.back(), this->objs_.end())) {
+      this->pos_.emplace_back(this->objs_.size());
 
       auto size = _chunks[i].size();
 
       if (inner_pos != 0) {
         // Find inner variables
-        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, std::back_inserter(this->d), cseq[pos]);
+        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, std::back_inserter(this->objs_), cseq[pos]);
 
         auto rest = slp_.SpanLength(cseq[pos]) - inner_pos;
         if (rest <= size) {
@@ -381,7 +459,7 @@ class CompactChunks : public Chunks<typename _SLP::VariableType> {
       std::size_t var_len;
       while (pos < cseq.size() && (var_len = slp_.SpanLength(cseq[pos])) <= size) {
         // Add complete covered variables
-        this->d.emplace_back(cseq[pos]);
+        this->objs_.emplace_back(cseq[pos]);
 
         size -= var_len;
         ++pos;
@@ -389,27 +467,31 @@ class CompactChunks : public Chunks<typename _SLP::VariableType> {
 
       if (0 < size) {
         // Find inner variables
-        grammar::ComputeSpanCoverEnding(slp_, size, std::back_inserter(this->d), cseq[pos]);
+        grammar::ComputeSpanCoverEnding(slp_, size, std::back_inserter(this->objs_), cseq[pos]);
       }
 
       inner_pos = size;
     }
   }
 
-  bool operator==(const CompactChunks<_SLP> &_chunks) const {
-    return Chunks<typename _SLP::VariableType>::operator==(_chunks) && slp_ == _chunks.slp_;
+  const _SLP &GetSLP() const {
+    return slp_;
   }
 
-  bool operator!=(const CompactChunks<_SLP> &_compact_chunks) const {
+  bool operator==(const GrammarCompressedChunks<_SLP> &_chunks) const {
+    return Chunks<std::vector<typename _SLP::VariableType>>::operator==(_chunks) && slp_ == _chunks.slp_;
+  }
+
+  bool operator!=(const GrammarCompressedChunks<_SLP> &_compact_chunks) const {
     return !(*this == _compact_chunks);
   }
 
   std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
-    return Chunks<typename _SLP::VariableType>::serialize(out, v, name) + sdsl::serialize(slp_, out);
+    return Chunks<std::vector<typename _SLP::VariableType>>::serialize(out, v, name) + sdsl::serialize(slp_, out);
   }
 
   void load(std::istream &in) {
-    Chunks<typename _SLP::VariableType>::load(in);
+    Chunks<std::vector<typename _SLP::VariableType>>::load(in);
     sdsl::load(slp_, in);
   }
 
