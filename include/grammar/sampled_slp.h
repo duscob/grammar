@@ -28,7 +28,7 @@ class AddSet {
     sort(set.begin(), set.end());
     set.erase(unique(set.begin(), set.end()), set.end());
 
-    pts_.AddData(set);
+    pts_.Insert(set.begin(), set.end());
   }
 
   template<typename _SLP, typename _Nodes, typename _RangeContainer>

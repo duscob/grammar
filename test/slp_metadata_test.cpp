@@ -158,16 +158,13 @@ using Sets = std::vector<std::vector<uint32_t>>;
 class Chunks_TF : public ::testing::TestWithParam<std::tuple<Sets, Sets>> {};
 
 
-TEST_P(Chunks_TF, AddData) {
+TEST_P(Chunks_TF, InsertAndAccess) {
   const auto &sets = std::get<0>(GetParam());
 
   grammar::Chunks<> chunks;
 
   for (int i = 0; i < sets.size(); ++i) {
-    EXPECT_EQ(chunks.AddData(sets[i]), i + 1);
-    auto s = chunks[i + 1];
-    ASSERT_EQ(s.second - s.first, sets[i].size());
-    EXPECT_TRUE(std::equal(s.first, s.second, sets[i].begin()));
+    EXPECT_EQ(chunks.Insert(sets[i].begin(), sets[i].end()), i + 1);
   }
 
   for (int i = 0; i < sets.size(); ++i) {
@@ -192,16 +189,70 @@ TEST_P(Chunks_TF, AddData) {
 }
 
 
-TEST_P(Chunks_TF, CompactChunk) {
+TEST_P(Chunks_TF, CopyConstructor) {
   const auto &sets = std::get<0>(GetParam());
 
   grammar::Chunks<> chunks;
   for (const auto &item : sets) {
-    chunks.AddData(item);
+    chunks.Insert(item.begin(), item.end());
+  }
+//  std::cout << "  |chunks| = " << sdsl::size_in_bytes(chunks.GetObjects()) << std::endl;
+
+  grammar::Chunks<sdsl::int_vector<32>, sdsl::int_vector<>> copied_chunks(chunks);
+//  std::cout << "  |copied_chunks| = " << sdsl::size_in_bytes(copied_chunks.GetObjects()) << std::endl;
+  for (int i = 0; i < sets.size(); ++i) {
+    auto s = copied_chunks[i + 1];
+    ASSERT_EQ(s.second - s.first, sets[i].size());
+    EXPECT_TRUE(std::equal(s.first, s.second, sets[i].begin()));
+  }
+
+  auto bit_compress = [](sdsl::int_vector<> &_v) { sdsl::util::bit_compress(_v); };
+  grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>> copied_compact_chunks(chunks, bit_compress, bit_compress);
+//  std::cout << "  |copied_compact_chunks| = " << sdsl::size_in_bytes(copied_compact_chunks.GetObjects()) << std::endl;
+  for (int i = 0; i < sets.size(); ++i) {
+    auto s = copied_compact_chunks[i + 1];
+    ASSERT_EQ(s.second - s.first, sets[i].size());
+    EXPECT_TRUE(std::equal(s.first, s.second, sets[i].begin()));
+  }
+}
+
+
+TEST_P(Chunks_TF, Serialization) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+
+  for (const auto &item : sets) {
+    chunks.Insert(item.begin(), item.end());
+  }
+
+  {
+    std::ofstream out("tmp.slp_metadata", std::ios::binary);
+    chunks.serialize(out);
+  }
+
+  grammar::Chunks<> chunks_loaded;
+  EXPECT_FALSE(chunks == chunks_loaded);
+
+  {
+    std::ifstream in("tmp.slp_metadata", std::ios::binary);
+    chunks_loaded.load(in);
+  }
+  EXPECT_TRUE(chunks == chunks_loaded);
+}
+
+
+TEST_P(Chunks_TF, GrammarCompressedChunk) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.Insert(item.begin(), item.end());
   }
 
   grammar::RePairEncoder<false> encoder;
-  grammar::CompactChunks<grammar::SLP<>> compact_chunks(chunks.gbegin(), chunks.gend(), chunks, encoder);
+  grammar::GrammarCompressedChunks<grammar::SLP<>> compact_chunks(
+      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
 
   const auto &e_sets = std::get<1>(GetParam());
   EXPECT_EQ(compact_chunks.size(), e_sets.size());
@@ -214,23 +265,24 @@ TEST_P(Chunks_TF, CompactChunk) {
 }
 
 
-TEST_P(Chunks_TF, Serialization) {
+TEST_P(Chunks_TF, GrammarCompressedChunkSerialization) {
   const auto &sets = std::get<0>(GetParam());
 
   grammar::Chunks<> chunks;
   for (const auto &item : sets) {
-    chunks.AddData(item);
+    chunks.Insert(item.begin(), item.end());
   }
 
   grammar::RePairEncoder<false> encoder;
-  grammar::CompactChunks<grammar::SLP<>> compact_chunks(chunks.gbegin(), chunks.gend(), chunks, encoder);
+  grammar::GrammarCompressedChunks<grammar::SLP<>> compact_chunks(
+      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
 
   {
     std::ofstream out("tmp.slp_metadata", std::ios::binary);
     compact_chunks.serialize(out);
   }
 
-  grammar::CompactChunks<grammar::SLP<>> compact_chunks_loaded;
+  grammar::GrammarCompressedChunks<grammar::SLP<>> compact_chunks_loaded;
   EXPECT_FALSE(compact_chunks == compact_chunks_loaded);
 
   {
@@ -247,7 +299,7 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(
         std::make_tuple(
             Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}},
-            Sets{{6, 4}, {6}, {3}, {6}, {5}}
+            Sets{{4, 6}, {6}, {3}, {6}, {5}}
         ),
         std::make_tuple(
             Sets{{1, 2}, {3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}},
@@ -259,11 +311,15 @@ INSTANTIATE_TEST_CASE_P(
         ),
         std::make_tuple(
             Sets{{1}, {2}, {3, 4}, {1, 2, 3}, {3, 1}, {2, 3}, {1, 2}},
-            Sets{{1}, {2}, {3, 4}, {6}, {3, 1}, {2, 3}, {5}}
+            Sets{{1}, {2}, {3, 4}, {6}, {1, 3}, {2, 3}, {5}}
         ),
         std::make_tuple(
             Sets{{1}, {2}, {3, 4}, {1, 2, 3}, {3, 1}, {2, 3, 1}, {2}},
-            Sets{{1}, {2}, {3, 4}, {6}, {3, 1}, {2, 3, 1}, {2}}
+            Sets{{1}, {2}, {3, 4}, {6}, {1, 3}, {1, 2, 3}, {2}}
+        ),
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2}, {3, 1}, {2}},
+            Sets{{4, 6}, {6}, {3}, {5}, {1, 3}, {2}}
         )
     )
 );
