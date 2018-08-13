@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "grammar/slp.h"
+#include "grammar/sampled_slp.h"
 #include "grammar/slp_metadata.h"
 #include "grammar/slp_interface.h"
 #include "grammar/slp_helper.h"
@@ -241,7 +242,9 @@ class SLPGenericConstruct_TF : public ::testing::Test {
 };
 
 
-using MyTypesConstruct = ::testing::Types<grammar::SLP<>, grammar::SLPWithMetadata<grammar::PTS<>>>;
+using MyTypesConstruct = ::testing::Types<grammar::SLP<>,
+                                          grammar::SLPWithMetadata<grammar::PTS<>>,
+                                          grammar::CombinedSLP<>>;
 TYPED_TEST_CASE(SLPGenericConstruct_TF, MyTypesConstruct);
 
 
@@ -249,7 +252,7 @@ TYPED_TEST(SLPGenericConstruct_TF, Construct) {
   std::vector<int> data = {1, 2, 3, 1, 2, 2, 1, 1, 1, 1, 3, 1, 2, 3};
   grammar::RePairEncoder<true> encoder;
 
-  TypeParam slp(0);
+  TypeParam slp;
   grammar::ConstructSLP(data.begin(), data.end(), encoder, slp);
 
   EXPECT_EQ(slp.Sigma(), *std::max_element(data.begin(), data.end()));
