@@ -89,7 +89,7 @@ class SLP {
    * @return left-hand of the rule [left, right]
    */
   const auto &operator[](_VariableType i) const {
-    return rules_.at(i - sigma_ - 1).first;
+    return rules_[i - sigma_ - 1].first;
   }
 
   /**
@@ -114,11 +114,11 @@ class SLP {
     if (IsTerminal(i))
       return {i};
 
-    auto children = (*this)[i];
-    auto left = Span(children.first);
-    auto right = Span(children.second);
-    left.insert(left.end(), right.begin(), right.end());
-    return left;
+    std::vector<_VariableType> span = {};
+    span.reserve(SpanLength(i));
+
+    GetSpan(i, span);
+    return span;
   }
 
   /**
@@ -169,6 +169,17 @@ class SLP {
  protected:
   _VariableType sigma_;
   std::vector<std::pair<std::pair<_VariableType, _VariableType>, _LengthType>> rules_;
+
+  void GetSpan(_VariableType i, std::vector<_VariableType> &_span) const {
+    if (IsTerminal(i)) {
+      _span.emplace_back(i);
+      return;
+    }
+
+    auto children = (*this)[i];
+    GetSpan(children.first, _span);
+    GetSpan(children.second, _span);
+  }
 };
 
 

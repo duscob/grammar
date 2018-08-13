@@ -94,11 +94,11 @@ TEST_P(SLP_TF, Access) {
     EXPECT_EQ((*slp_)[sigma + i + 1], rules[i]);
   }
 
-  for (std::size_t i = 1; i <= sigma; ++i) {
-    EXPECT_ANY_THROW((*slp_)[i]);
-  }
-
-  EXPECT_ANY_THROW((*slp_)[sigma + rules.size() + 1]);
+//  for (std::size_t i = 1; i <= sigma; ++i) {
+//    EXPECT_ANY_THROW((*slp_)[i]);
+//  }
+//
+//  EXPECT_ANY_THROW((*slp_)[sigma + rules.size() + 1]);
 }
 
 
