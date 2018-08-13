@@ -244,9 +244,7 @@ class Chunks {
       return 0;
 
     pos_.push_back(objs_.size());
-    for (auto it = _first; it != _last; ++it) {
-      objs_.push_back(*it);
-    }
+    std::copy(_first, _last, back_inserter(objs_));
 
     return pos_.size();
   }
