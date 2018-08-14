@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <algorithm>
 
+#include "utility.h"
+
 
 namespace grammar {
 
@@ -70,9 +72,6 @@ void ComputeSpanCover(const _SLP &slp,
                       std::size_t curr_var) {
   if (begin >= end)
     return;
-
-  if (curr_var == 0)
-    curr_var = slp.Start();
 
   if (0 == begin && slp.SpanLength(curr_var) <= end) {
     out = curr_var;
@@ -169,11 +168,6 @@ std::pair<std::size_t, std::size_t> ComputeSpanCoverFromBottom(const _SLP &slp,
 }
 
 
-class NoAction {
- public:
-  template<typename ...Args>
-  void operator()(Args... args) {}
-};
 
 
 template<typename _SLP, typename _OutputIterator, typename _Action = NoAction>
