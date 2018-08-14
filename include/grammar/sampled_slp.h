@@ -229,17 +229,23 @@ template<typename _SLP = grammar::SLP<>,
     typename _LeavesContainer = std::vector<typename _SLP::VariableType>>
 class CombinedSLP : public _SLP, public _SampledSLP {
  public:
+  using _SLP::size_type;
+
   CombinedSLP() = default;
 
   template<typename _LeafAction, typename _NodeAction, typename _Predicate>
   void Compute(uint32_t _block_size, _LeafAction &&_leaf_action, _NodeAction &&_node_action, const _Predicate &_pred) {
-    auto leaf_action = [this, &_leaf_action](auto _slp, auto _curr_var) {
+    auto leaf_action = [this, &_leaf_action](const auto &_slp, auto _curr_var) {
       _leaf_action(_slp, _curr_var);
 
       leaves_.push_back(_curr_var);
     };
 
     _SampledSLP::Compute(*this, _block_size, leaf_action, _node_action, _pred);
+  }
+
+  auto Map(std::size_t _leaf) const {
+    return leaves_[_leaf - 1];
   }
 
   bool operator==(const CombinedSLP &_combined_slp) const {

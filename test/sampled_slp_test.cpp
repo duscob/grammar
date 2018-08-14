@@ -266,12 +266,17 @@ TEST_P(SampledSLPMap_TF, CombinedSLPLeafAndPos) {
     EXPECT_EQ(cslp.Leaf(pos[i].first), pos[i].second) << i;
   }
 
-  std::set<std::size_t> leaves;
+  std::set<std::size_t> new_leaves;
   for (int i = 0; i < pos.size(); ++i) {
-    if (leaves.count(pos[i].second) == 0) {
+    if (new_leaves.count(pos[i].second) == 0) {
       EXPECT_EQ(cslp.Position(pos[i].second), pos[i].first) << i;
-      leaves.insert(pos[i].second);
+      new_leaves.insert(pos[i].second);
     }
+  }
+
+  std::vector<uint32_t> leaves = {9, 6, 7, 6, 10};
+  for (int i = 0; i < leaves.size(); ++i) {
+    EXPECT_EQ(cslp.Map(i + 1), leaves[i]) << i;
   }
 }
 
