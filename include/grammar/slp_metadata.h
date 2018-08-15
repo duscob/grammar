@@ -362,19 +362,18 @@ class SampledPTS {
 };
 
 
-template<typename _SLP>
-class GrammarCompressedChunks : public Chunks<std::vector<typename _SLP::VariableType>> {
+template<typename _SLP, bool kExpand = true, typename _Chunks = Chunks<std::vector<typename _SLP::VariableType>>>
+class GrammarCompressedChunks : public _Chunks {
  public:
   GrammarCompressedChunks() = default;
 
-  template<typename _II, typename _Chunks, typename _Encoder>
-  GrammarCompressedChunks(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
+  template<typename _II, typename __Chunks, typename _Encoder>
+  GrammarCompressedChunks(_II _begin, _II _end, const __Chunks &_chunks, _Encoder &_encoder) {
     Compute(_begin, _end, _chunks, _encoder);
   }
 
-  template<typename _II, typename _Chunks, typename _Encoder>
-  void Compute(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
-
+  template<typename _II, typename __Chunks, typename _Encoder>
+  void Compute(_II _begin, _II _end, const __Chunks &_chunks, _Encoder &_encoder) {
     std::vector<typename _SLP::VariableType> cseq;
 
     auto report_cseq = [&cseq](auto v) {
@@ -388,7 +387,8 @@ class GrammarCompressedChunks : public Chunks<std::vector<typename _SLP::Variabl
 
     std::size_t pos = 0;
     std::size_t inner_pos = 0;
-    for (int i = 1; i <= _chunks.size(); ++i, std::sort(this->objs_.begin() + this->pos_.back(), this->objs_.end())) {
+    for (int i = 1; i <= _chunks.size();
+         ++i, (kExpand ? NoAction()() : std::sort(this->objs_.begin() + this->pos_.back(), this->objs_.end()))) {
       this->pos_.emplace_back(this->objs_.size());
 
       auto size = _chunks[i].size();
@@ -425,6 +425,41 @@ class GrammarCompressedChunks : public Chunks<std::vector<typename _SLP::Variabl
 
       inner_pos = size;
     }
+  }
+
+  template<typename _Index>
+  auto operator[](_Index i) const -> typename std::enable_if<
+      std::integral_constant<
+          bool,
+          kExpand && std::is_integral<_Index>::value
+      >::value,
+      std::vector<uint32_t>
+  >::type {
+    assert(i <= this->pos_.size());
+
+    std::vector<uint32_t> set;
+
+    auto end = (i < this->pos_.size()) ? this->objs_.begin() + this->pos_[i] : this->objs_.end();
+    for (auto it = this->objs_.begin() + this->pos_[i - 1]; it != end; ++it) {
+      if (slp_.IsTerminal(*it)) {
+        set.push_back(*it);
+      } else {
+        const auto &span = slp_.Span(*it);
+        std::copy(span.begin(), span.end(), back_inserter(set));
+      }
+    }
+    return set;
+  }
+
+  template<typename _Index>
+  auto operator[](_Index i) const -> typename std::enable_if<
+      std::integral_constant<
+          bool,
+          !kExpand && std::is_integral<_Index>::value
+      >::value,
+      typename _Chunks::FakeContainer
+  >::type {
+    return _Chunks::operator[](i);
   }
 
   const _SLP &GetSLP() const {
