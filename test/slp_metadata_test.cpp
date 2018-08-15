@@ -251,7 +251,7 @@ TEST_P(Chunks_TF, GrammarCompressedChunk) {
   }
 
   grammar::RePairEncoder<false> encoder;
-  grammar::GrammarCompressedChunks<grammar::SLP<>> compact_chunks(
+  grammar::GrammarCompressedChunks<grammar::SLP<>, false> compact_chunks(
       chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
 
   const auto &e_sets = std::get<1>(GetParam());
@@ -260,7 +260,31 @@ TEST_P(Chunks_TF, GrammarCompressedChunk) {
   for (int i = 0; i < sets.size(); ++i) {
     auto s = compact_chunks[i + 1];
     ASSERT_EQ(s.size(), e_sets[i].size()) << i;
-    EXPECT_TRUE(std::equal(s.first, s.second, e_sets[i].begin()));
+    EXPECT_TRUE(std::equal(s.begin(), s.end(), e_sets[i].begin()));
+  }
+}
+
+
+TEST_P(Chunks_TF, GrammarCompressedChunkExpand) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.Insert(item.begin(), item.end());
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::GrammarCompressedChunks<grammar::SLP<>, true> compact_chunks(
+      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+
+//  const auto &e_sets = std::get<1>(GetParam());
+  ASSERT_EQ(compact_chunks.size(), sets.size());
+
+  for (int i = 0; i < sets.size(); ++i) {
+    auto s = compact_chunks[i + 1];
+    EXPECT_EQ(s, sets[i]) << i;
+//    ASSERT_EQ(s.size(), sets[i].size()) << i;
+//    EXPECT_TRUE(std::equal(s.begin(), s.end(), sets[i].begin()));
   }
 }
 

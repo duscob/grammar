@@ -12,7 +12,8 @@
 #include <sdsl/bit_vectors.hpp>
 #include <sdsl/vlc_vector.hpp>
 
-#include "slp_metadata.h"
+#include "slp_helper.h"
+#include "slp.h"
 
 
 namespace grammar {
@@ -80,16 +81,24 @@ class SampledSLP {
 
   SampledSLP() = default;
 
-  template<typename _SLPValueType = uint32_t, typename _SLP, typename _Action, typename _Predicate>
-  SampledSLP(const _SLP &_slp, uint32_t _block_size, _Action _action, _Predicate _pred) {
-    Compute<_SLPValueType>(_slp, _block_size, _action, _pred);
+  template<typename _SLP, typename _LeafAction, typename _NodeAction, typename _Predicate>
+  SampledSLP(const _SLP &_slp,
+             uint32_t _block_size,
+             _LeafAction &&_leaf_action,
+             _NodeAction &&_node_action,
+             const _Predicate &_pred) {
+    Compute(_slp, _block_size, _leaf_action, _node_action, _pred);
   }
 
-  template<typename _SLPValueType = uint32_t, typename _SLP, typename _Action, typename _Predicate>
-  void Compute(const _SLP &_slp, uint32_t _block_size, _Action _action, _Predicate _pred) {
-    std::vector<_SLPValueType> nodes;
+  template<typename _SLP, typename _LeafAction, typename _NodeAction, typename _Predicate>
+  void Compute(const _SLP &_slp,
+               uint32_t _block_size,
+               _LeafAction &&_leaf_action,
+               _NodeAction &&_node_action,
+               const _Predicate &_pred) {
+    std::vector<typename _SLP::VariableType> nodes;
 
-    ComputeSampledSLPLeaves(_slp, _block_size, back_inserter(nodes), _action);
+    ComputeSampledSLPLeaves(_slp, _block_size, back_inserter(nodes), _leaf_action);
 
     l = nodes.size();
 
@@ -110,14 +119,14 @@ class SampledSLP {
     std::map<std::size_t, std::size_t> tmp_f;
     std::map<std::size_t, std::size_t> tmp_n;
 
-    auto build_inner_data = [&_action, &tmp_b_f, &tmp_f, &tmp_n, this](
+    auto build_inner_data = [&_node_action, &tmp_b_f, &tmp_f, &tmp_n, this](
         const _SLP &_slp,
         std::size_t _curr_var,
         const auto &_nodes,
         std::size_t _new_node,
         const auto &_left_ranges,
         const auto &_right_ranges) {
-      _action(_slp, _curr_var, _nodes, _new_node, _left_ranges, _right_ranges);
+      _node_action(_slp, _curr_var, _nodes, _new_node, _left_ranges, _right_ranges);
 
       tmp_b_f.emplace_back(0);
       tmp_b_f[_left_ranges.front().first] = 1;
@@ -178,7 +187,7 @@ class SampledSLP {
     return !(*this == _sampled_slp);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node* v=nullptr, std::string name="") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(l, out);
     written_bytes += b_l.serialize(out);
@@ -203,7 +212,7 @@ class SampledSLP {
     sdsl::load(n, in);
   }
 
- private:
+ protected:
   std::size_t l = 0;
   _BVLeafNodesMarks b_l;
   _BVLeafNodesMarksRank b_l_rank;
@@ -212,6 +221,60 @@ class SampledSLP {
   _BVFirstChildrenRank b_f_rank;
   _Parents f;
   _NextLeaves n;
+};
+
+
+template<typename _SLP = grammar::SLP<>,
+    typename _SampledSLP = grammar::SampledSLP<>,
+    typename _LeavesContainer = std::vector<typename _SLP::VariableType>>
+class CombinedSLP : public _SLP, public _SampledSLP {
+ public:
+  using _SLP::size_type;
+
+  CombinedSLP() = default;
+
+  template<typename _LeafAction, typename _NodeAction, typename _Predicate>
+  void Compute(uint32_t _block_size, _LeafAction &&_leaf_action, _NodeAction &&_node_action, const _Predicate &_pred) {
+    auto leaf_action = [this, &_leaf_action](const auto &_slp, auto _curr_var) {
+      _leaf_action(_slp, _curr_var);
+
+      leaves_.push_back(_curr_var);
+    };
+
+    _SampledSLP::Compute(*this, _block_size, leaf_action, _node_action, _pred);
+  }
+
+  auto Map(std::size_t _leaf) const {
+    return leaves_[_leaf - 1];
+  }
+
+  bool operator==(const CombinedSLP &_combined_slp) const {
+    return _SLP::operator==(_combined_slp)
+        && _SampledSLP::operator==(_combined_slp)
+        && leaves_ == _combined_slp.leaves_;
+  }
+
+  bool operator!=(const CombinedSLP &_combined_slp) const {
+    return !(*this == _combined_slp);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+    std::size_t written_bytes = 0;
+    written_bytes += _SLP::serialize(out);
+    written_bytes += _SampledSLP::serialize(out);
+    written_bytes += sdsl::serialize(leaves_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    _SLP::load(in);
+    _SampledSLP::load(in);
+    sdsl::load(leaves_, in);
+  }
+
+ protected:
+  _LeavesContainer leaves_;
 };
 
 }

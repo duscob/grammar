@@ -13,6 +13,7 @@
 #include <cassert>
 
 #include "slp_helper.h"
+#include "utility.h"
 #include "io.h"
 
 
@@ -116,19 +117,6 @@ class PTS {
 };
 
 
-template<typename _X, typename _Y>
-typename std::enable_if<std::is_constructible<_X, _Y>::value>::type Construct(_X &_x, const _Y &_y) {
-  _x = _X(_y);
-}
-
-
-template<typename _X, typename _Y>
-typename std::enable_if<!std::is_constructible<_X, _Y>::value>::type Construct(_X &_x, const _Y &_y) {
-  _x = _X(_y.size());
-  std::copy(_y.begin(), _y.end(), _x.begin());
-}
-
-
 template<typename _ObjContainer = std::vector<uint32_t>, typename _PosContainer = std::vector<uint32_t>>
 class Chunks {
  public:
@@ -181,39 +169,6 @@ class Chunks {
     return pos_;
   }
 
- private:
-// Primary template with a static assertion
-// for a meaningful error message
-// if it ever gets instantiated.
-// We could leave it undefined if we didn't care.
-  template<typename, typename T>
-  struct has_push_back {
-    static_assert(
-        std::integral_constant<T, false>::value,
-        "Second template parameter needs to be of function type.");
-  };
-
-// specialization that does the checking
-  template<typename C, typename Ret, typename... Args>
-  struct has_push_back<C, Ret(Args...)> {
-   private:
-    template<typename T>
-    static constexpr auto check(T *)
-    -> typename std::is_same<
-        decltype(std::declval<T>().push_back(std::declval<Args>()...)),
-        Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    >::type;  // attempt to call it and see if the return type is correct
-
-    template<typename>
-    static constexpr std::false_type check(...);
-
-    typedef decltype(check<C>(0)) type;
-
-   public:
-    static constexpr bool value = type::value;
-  };
-
- public:
   template<typename _Value>
   auto Insert(_Value _value)
   -> typename std::enable_if<
@@ -244,9 +199,7 @@ class Chunks {
       return 0;
 
     pos_.push_back(objs_.size());
-    for (auto it = _first; it != _last; ++it) {
-      objs_.push_back(*it);
-    }
+    std::copy(_first, _last, back_inserter(objs_));
 
     return pos_.size();
   }
@@ -409,19 +362,18 @@ class SampledPTS {
 };
 
 
-template<typename _SLP>
-class GrammarCompressedChunks : public Chunks<std::vector<typename _SLP::VariableType>> {
+template<typename _SLP, bool kExpand = true, typename _Chunks = Chunks<std::vector<typename _SLP::VariableType>>>
+class GrammarCompressedChunks : public _Chunks {
  public:
   GrammarCompressedChunks() = default;
 
-  template<typename _II, typename _Chunks, typename _Encoder>
-  GrammarCompressedChunks(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
+  template<typename _II, typename __Chunks, typename _Encoder>
+  GrammarCompressedChunks(_II _begin, _II _end, const __Chunks &_chunks, _Encoder &_encoder) {
     Compute(_begin, _end, _chunks, _encoder);
   }
 
-  template<typename _II, typename _Chunks, typename _Encoder>
-  void Compute(_II _begin, _II _end, const _Chunks &_chunks, _Encoder &_encoder) {
-
+  template<typename _II, typename __Chunks, typename _Encoder>
+  void Compute(_II _begin, _II _end, const __Chunks &_chunks, _Encoder &_encoder) {
     std::vector<typename _SLP::VariableType> cseq;
 
     auto report_cseq = [&cseq](auto v) {
@@ -435,7 +387,8 @@ class GrammarCompressedChunks : public Chunks<std::vector<typename _SLP::Variabl
 
     std::size_t pos = 0;
     std::size_t inner_pos = 0;
-    for (int i = 1; i <= _chunks.size(); ++i, std::sort(this->objs_.begin() + this->pos_.back(), this->objs_.end())) {
+    for (int i = 1; i <= _chunks.size();
+         ++i, (kExpand ? NoAction()() : std::sort(this->objs_.begin() + this->pos_.back(), this->objs_.end()))) {
       this->pos_.emplace_back(this->objs_.size());
 
       auto size = _chunks[i].size();
@@ -472,6 +425,41 @@ class GrammarCompressedChunks : public Chunks<std::vector<typename _SLP::Variabl
 
       inner_pos = size;
     }
+  }
+
+  template<typename _Index>
+  auto operator[](_Index i) const -> typename std::enable_if<
+      std::integral_constant<
+          bool,
+          kExpand && std::is_integral<_Index>::value
+      >::value,
+      std::vector<uint32_t>
+  >::type {
+    assert(i <= this->pos_.size());
+
+    std::vector<uint32_t> set;
+
+    auto end = (i < this->pos_.size()) ? this->objs_.begin() + this->pos_[i] : this->objs_.end();
+    for (auto it = this->objs_.begin() + this->pos_[i - 1]; it != end; ++it) {
+      if (slp_.IsTerminal(*it)) {
+        set.push_back(*it);
+      } else {
+        const auto &span = slp_.Span(*it);
+        std::copy(span.begin(), span.end(), back_inserter(set));
+      }
+    }
+    return set;
+  }
+
+  template<typename _Index>
+  auto operator[](_Index i) const -> typename std::enable_if<
+      std::integral_constant<
+          bool,
+          !kExpand && std::is_integral<_Index>::value
+      >::value,
+      typename _Chunks::FakeContainer
+  >::type {
+    return _Chunks::operator[](i);
   }
 
   const _SLP &GetSLP() const {

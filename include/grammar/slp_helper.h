@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <algorithm>
 
+#include "utility.h"
+
 
 namespace grammar {
 
@@ -39,14 +41,14 @@ SLPWrapper<_SLP> BuildSLPWrapper(_SLP &slp) {
 
 
 template<typename _II, typename _SLP, typename _Encoder>
-void ConstructSLP(_II begin, _II end, _Encoder encoder, _SLP &slp) {
+void ConstructSLP(_II begin, _II end, _Encoder &&encoder, _SLP &slp) {
   auto wrapper = BuildSLPWrapper(slp);
   encoder.Encode(begin, end, wrapper);
 }
 
 
 template<typename _II, typename _SLP, typename _Encoder, typename ...Args>
-void ComputeSLP(_II begin, _II end, _Encoder encoder, _SLP &slp, Args ...args) {
+void ComputeSLP(_II begin, _II end, _Encoder &&encoder, _SLP &slp, Args ...args) {
   ConstructSLP(begin, end, encoder, slp);
   slp.ComputeMetadata(args...);
 }
@@ -54,9 +56,9 @@ void ComputeSLP(_II begin, _II end, _Encoder encoder, _SLP &slp, Args ...args) {
 
 template<typename _SLP, typename _OutputIterator>
 std::pair<std::size_t, std::size_t> ComputeSpanCover(const _SLP &slp,
-                      std::size_t begin,
-                      std::size_t end,
-                      _OutputIterator out) {
+                                                     std::size_t begin,
+                                                     std::size_t end,
+                                                     _OutputIterator out) {
   ComputeSpanCover(slp, begin, end, out, slp.Start());
   return {begin, end};
 }
@@ -70,9 +72,6 @@ void ComputeSpanCover(const _SLP &slp,
                       std::size_t curr_var) {
   if (begin >= end)
     return;
-
-  if (curr_var == 0)
-    curr_var = slp.Start();
 
   if (0 == begin && slp.SpanLength(curr_var) <= end) {
     out = curr_var;
@@ -169,18 +168,13 @@ std::pair<std::size_t, std::size_t> ComputeSpanCoverFromBottom(const _SLP &slp,
 }
 
 
-class NoAction {
- public:
-  template<typename ...Args>
-  void operator()(Args... args) {}
-};
 
 
 template<typename _SLP, typename _OutputIterator, typename _Action = NoAction>
 void ComputeSampledSLPLeaves(const _SLP &_slp,
                              uint64_t _block_size,
                              _OutputIterator _out,
-                             _Action _action = NoAction()) {
+                             _Action &&_action = NoAction()) {
   ComputeSampledSLPLeaves(_slp, _block_size, _out, _slp.Start(), _action);
 }
 
@@ -190,10 +184,7 @@ void ComputeSampledSLPLeaves(const _SLP &_slp,
                              uint64_t _block_size,
                              _OutputIterator _out,
                              std::size_t _curr_var,
-                             _Action _action = NoAction()) {
-  if (_curr_var == 0)
-    _curr_var = _slp.Start();
-
+                             _Action &&_action = NoAction()) {
   auto length = _slp.SpanLength(_curr_var);
   if (length <= _block_size) {
     _out = _curr_var;
@@ -216,7 +207,7 @@ void ComputeSampledSLPNodes(const _SLP &_slp,
                             uint32_t _block_size,
                             std::vector<_SLPValueType> &_nodes,
                             const _Predicate &_pred,
-                            _Action _action = NoAction()) {
+                            _Action &&_action = NoAction()) {
   std::size_t curr_leaf = 0;
   ComputeSampledSLPNodes(_slp, _slp.Start(), _block_size, _nodes, curr_leaf, _pred, _action);
 }
@@ -229,7 +220,7 @@ std::vector<std::pair<std::size_t, std::size_t>> ComputeSampledSLPNodes(const _S
                                                                         std::vector<_SLPValueType> &_nodes,
                                                                         std::size_t &_curr_leaf,
                                                                         const _Predicate &_pred,
-                                                                        _Action _action = NoAction()) {
+                                                                        _Action &&_action = NoAction()) {
   auto length = _slp.SpanLength(_curr_var);
   if (length <= _block_size) {
     return {{_curr_leaf++, 1}};
