@@ -3,6 +3,8 @@
 
 option(grammar_build_tests "Build all of grammar's tests." ON)
 
+option(grammar_build_benchmarks "Build all of grammar's benchmarks." ON)
+
 option(grammar_install "Enable installation of grammar. (Projects embedding grammar may want to turn this OFF.)" ON)
 
 
@@ -107,4 +109,13 @@ if (grammar_build_tests)
     cxx_test_with_flags_and_args(slp_metadata_test "" "gtest;gtest_main;grammar;sdsl" "" test/slp_metadata_test.cpp)
 
     cxx_test_with_flags_and_args(sampled_slp_test "" "gtest;gtest_main;grammar" "" test/sampled_slp_test.cpp)
+endif ()
+
+
+if (grammar_build_benchmarks)
+    include(ConfigGBenchmark)
+
+    find_package(Boost COMPONENTS filesystem system REQUIRED)
+
+    cxx_executable_with_flags(chunks_bm "" "gflags;benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
 endif ()
