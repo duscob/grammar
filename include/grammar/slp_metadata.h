@@ -195,8 +195,6 @@ class Chunks {
       >::value,
       typename _PosContainer::size_type
   >::type {
-    if (_first == _last)
-      return 0;
 
     pos_.push_back(objs_.size());
     std::copy(_first, _last, back_inserter(objs_));
@@ -487,6 +485,163 @@ class GrammarCompressedChunks : public _Chunks {
   _SLP slp_;
 };
 
+
+template<typename _SLP, typename _TerminalChunks = Chunks<>, typename _VariableChunks = Chunks<>>
+class GCChunks {
+ public:
+  GCChunks() = default;
+
+  template<typename __SLP,
+      typename __TChunks,
+      typename __VChunks,
+      typename __SLPAct1 = NoAction,
+      typename __SLPAct2 = NoAction,
+      typename __TChunksAct1 = NoAction,
+      typename __TChunksAct2 = NoAction,
+      typename __VChunksAct1 = NoAction,
+      typename __VChunksAct2 = NoAction>
+  GCChunks(const __SLP &_slp,
+           const __TChunks &_tchunks,
+           const __VChunks &_vchunks,
+           __SLPAct1 &&_slp_act1 = NoAction(),
+           __SLPAct2 &&_slp_act2 = NoAction(),
+           __TChunksAct1 &&_tchunks_act1 = NoAction(),
+           __TChunksAct2 &&_tchunks_act2 = NoAction(),
+           __VChunksAct1 &&_vchunks_act1 = NoAction(),
+           __VChunksAct2 &&_vchunks_act2 = NoAction()): slp_(_slp, _slp_act1, _slp_act2),
+                                                        tchunks_(_tchunks, _tchunks_act1, _tchunks_act2),
+                                                        vchunks_(_vchunks, _vchunks_act1, _vchunks_act2) {
+  }
+
+  template<typename _II, typename _Chunks, typename _Encoder>
+  GCChunks(_II _first, _II _last, const _Chunks &_chunks, _Encoder &_encoder) {
+    Compute(_first, _last, _chunks, _encoder);
+  }
+
+  template<typename _II, typename _Chunks, typename _Encoder>
+  void Compute(_II _first, _II _last, const _Chunks &_chunks, _Encoder &_encoder) {
+    std::vector<typename _SLP::VariableType> cseq;
+
+    auto report_cseq = [&cseq](auto v) {
+      cseq.emplace_back(v);
+    };
+
+    auto wrapper = BuildSLPWrapper(slp_);
+    _encoder.Encode(_first, _last, wrapper, report_cseq);
+
+    std::vector<typename _SLP::VariableType> set;
+    auto it_last_terminal = set.begin();
+
+    std::size_t pos = 0;
+    std::size_t inner_pos = 0;
+    for (int i = 1; i <= _chunks.size();
+         ++i,
+             std::sort(set.begin(), set.end()),
+             it_last_terminal = std::lower_bound(set.begin(), set.end(), slp_.Sigma() + 1),
+             tchunks_.Insert(set.begin(), it_last_terminal),
+             vchunks_.Insert(it_last_terminal, set.end())) {
+
+      set.clear();
+
+      auto size = _chunks[i].size();
+
+      if (inner_pos != 0) {
+        // Find inner variables
+        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, std::back_inserter(set), cseq[pos]);
+
+        auto rest = slp_.SpanLength(cseq[pos]) - inner_pos;
+        if (rest <= size) {
+          // Get to the end of current variable's expansion
+          size -= rest;
+          ++pos;
+        } else {
+          // Still remain elements in the current variable's expansion
+          inner_pos += size;
+          continue;
+        }
+      }
+
+      std::size_t var_len;
+      while (pos < cseq.size() && (var_len = slp_.SpanLength(cseq[pos])) <= size) {
+        // Add complete covered variables
+        set.emplace_back(cseq[pos]);
+
+        size -= var_len;
+        ++pos;
+      }
+
+      if (0 < size) {
+        // Find inner variables
+        grammar::ComputeSpanCoverEnding(slp_, size, std::back_inserter(set), cseq[pos]);
+      }
+
+      inner_pos = size;
+    }
+  }
+
+  auto size() const {
+    return tchunks_.size();
+  }
+
+  auto GetTerminalSet(std::size_t i) const {
+    return tchunks_[i];
+  }
+
+  auto GetVariableSet(std::size_t i) const {
+    return vchunks_[i];
+  }
+
+  auto operator[](std::size_t i) const {
+    return GetTerminalSet(i);
+  }
+
+  const auto &GetSLP() const {
+    return slp_;
+  }
+
+  const auto &GetTerminalChunks() const {
+    return tchunks_;
+  }
+
+  const auto &GetVariableChunks() const {
+    return vchunks_;
+  }
+
+  template<typename __SLP, typename __TChunks, typename __VChunks>
+  bool operator==(const GCChunks<__SLP, __TChunks, __VChunks> &_chunks) const {
+    return slp_ == _chunks.GetSLP()
+        && tchunks_ == _chunks.GetTerminalChunks()
+        && vchunks_ == _chunks.GetVariableChunks();
+  }
+
+  template<typename __SLP, typename __TChunks, typename __VChunks>
+  bool operator!=(const GCChunks<__SLP, __TChunks, __VChunks> &_chunks) const {
+    return !(*this == _chunks);
+  }
+
+  typedef std::size_t size_type;
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(slp_, out);
+    written_bytes += sdsl::serialize(tchunks_, out);
+    written_bytes += sdsl::serialize(vchunks_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(slp_, in);
+    sdsl::load(tchunks_, in);
+    sdsl::load(vchunks_, in);
+  }
+
+ protected:
+  _SLP slp_;
+  _TerminalChunks tchunks_;
+  _VariableChunks vchunks_;
 };
+
+}
 
 #endif //GRAMMAR_SLP_METADATA_H

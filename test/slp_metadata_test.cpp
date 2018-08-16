@@ -347,3 +347,86 @@ INSTANTIATE_TEST_CASE_P(
         )
     )
 );
+
+
+class GCChunks_TF : public ::testing::TestWithParam<std::tuple<Sets, Sets, Sets>> {};
+
+
+TEST_P(GCChunks_TF, ComputeAndAccess) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.Insert(item.begin(), item.end());
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::GCChunks<grammar::SLP<>> gc_chunks(chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+
+  const auto &t_sets = std::get<1>(GetParam());
+  const auto &v_sets = std::get<2>(GetParam());
+  EXPECT_EQ(gc_chunks.size(), t_sets.size());
+
+  for (int i = 0; i < sets.size(); ++i) {
+    {
+      const auto &ts = gc_chunks[i + 1];
+      ASSERT_EQ(ts.size(), t_sets[i].size()) << i;
+      EXPECT_TRUE(std::equal(ts.begin(), ts.end(), t_sets[i].begin()));
+    }
+    {
+      const auto &vs = gc_chunks.GetVariableSet(i + 1);
+      ASSERT_EQ(vs.size(), v_sets[i].size()) << i;
+      EXPECT_TRUE(std::equal(vs.begin(), vs.end(), v_sets[i].begin()));
+    }
+  }
+}
+
+
+TEST_P(GCChunks_TF, Serialization) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.Insert(item.begin(), item.end());
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::GCChunks<grammar::SLP<>> gc_chunks(chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+
+  {
+    std::ofstream out("tmp.slp_metadata", std::ios::binary);
+    gc_chunks.serialize(out);
+  }
+
+  grammar::GCChunks<grammar::SLP<>> gc_chunks_loaded;
+  EXPECT_FALSE(gc_chunks == gc_chunks_loaded);
+
+  {
+    std::ifstream in("tmp.slp_metadata", std::ios::binary);
+    gc_chunks_loaded.load(in);
+  }
+  EXPECT_TRUE(gc_chunks == gc_chunks_loaded);
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    Chunks,
+    GCChunks_TF,
+    ::testing::Values(
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}},
+            Sets{{4}, {}, {3}, {}, {}},
+            Sets{{6}, {6}, {}, {6}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}, {1, 2, 4}},
+            Sets{{4}, {}, {3}, {}, {}, {4}},
+            Sets{{6}, {6}, {}, {6}, {5}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}, {1}, {2, 4}},
+            Sets{{4}, {}, {3}, {}, {}, {1}, {2, 4}},
+            Sets{{6}, {6}, {}, {6}, {5}, {}, {}}
+        )
+    )
+);
