@@ -32,6 +32,45 @@ static void BM_Empty(benchmark::State &state) {
 // Register the function as a benchmark
 BENCHMARK(BM_Empty);
 
+
+template<typename _GCChunks>
+class VChunksWrapper {
+ public:
+  VChunksWrapper(const _GCChunks &_gcchunks): gcchunks_(_gcchunks){}
+
+  auto operator[](std::size_t i) const {
+    return gcchunks_.GetVariableSet(i);
+  }
+
+ protected:
+  const _GCChunks &gcchunks_;
+};
+
+template<typename _GCChunks>
+auto BuildVChunksWrapper(const _GCChunks &_gcchunks) {
+  return VChunksWrapper<_GCChunks>(_gcchunks);
+}
+
+
+template<typename _SLP>
+class VSpanWrapper {
+ public:
+  VSpanWrapper(const _SLP &_slp): slp_(_slp){}
+
+  auto operator[](std::size_t i) const {
+    return slp_.Span(i);
+  }
+
+ protected:
+  const _SLP &slp_;
+};
+
+template<typename _SLP>
+auto BuildVSpanWrapper(const _SLP &_slp) {
+  return VSpanWrapper<_SLP>(_slp);
+}
+
+
 auto BM_merge_chunks = [](benchmark::State &state, const auto &chunks, const auto &merge, const auto &set_union) {
   std::vector<uint32_t> result;
 
@@ -61,6 +100,37 @@ auto BM_merge_chunks = [](benchmark::State &state, const auto &chunks, const aut
 //      auto last_it = std::set_union(tmp_set.begin(), tmp_set.end(), set.begin(), set.end(), result.begin());
 //      result.resize(last_it - result.begin());
 //    }
+  }
+
+  state.counters["Items"] = result.size();
+};
+
+auto BM_merge_gcchunks = [](benchmark::State &state, const auto &chunks, const auto &merge, const auto &set_union) {
+  std::vector<uint32_t> result;
+  std::vector<uint32_t> tresult;
+  std::vector<uint32_t> vresult;
+  std::vector<uint32_t> sresult;
+
+  std::vector<uint32_t> items;
+
+  std::default_random_engine gen(state.range(0));
+  std::uniform_int_distribution<> uniform_dist(1, chunks.size());
+  for (int i = 0; i < state.range(0); ++i) {
+    items.push_back(uniform_dist(gen));
+  }
+
+  for (auto _ : state) {
+    tresult.clear();
+    vresult.clear();
+    sresult.clear();
+    result.clear();
+
+    merge(items.begin(), items.end(), chunks, tresult, set_union);
+    merge(items.begin(), items.end(), BuildVChunksWrapper(chunks), vresult, set_union);
+    merge(vresult.begin(), vresult.end(), BuildVSpanWrapper(chunks.GetSLP()), sresult, set_union);
+
+    result.reserve(tresult.size() + sresult.size());
+    std::set_union(tresult.begin(), tresult.end(), sresult.begin(), sresult.end(), back_inserter(result));
   }
 
   state.counters["Items"] = result.size();
@@ -147,38 +217,40 @@ int main(int argc, char *argv[]) {
                                set_union_custom)->Arg(8);
 
   grammar::RePairEncoder<false> encoder;
-  grammar::GrammarCompressedChunks<grammar::SLP<>> chunks_gc(
-      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
-  std::cout << "  *** |Chunks_GC| = " << sdsl::size_in_bytes(chunks_gc) << std::endl;
-  benchmark::RegisterBenchmark("Chunks_GC",
-                               BM_merge_chunks,
-                               chunks_gc,
-                               merge_one_by_one,
-                               set_union_default)->Arg(8);
-  benchmark::RegisterBenchmark("Chunks_GC",
-                               BM_merge_chunks,
-                               chunks_gc,
-                               merge_one_by_one,
-                               set_union_custom)->Arg(8);
-
-  grammar::GrammarCompressedChunks<grammar::SLP<>, false> chunks_gc_nexp(
-      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
-  std::cout << "  *** |Chunks_GC_NoExp| = " << sdsl::size_in_bytes(chunks_gc_nexp) << std::endl;
-  benchmark::RegisterBenchmark("Chunks_GC_NoExp",
-                               BM_merge_chunks,
-                               chunks_gc_nexp,
-                               merge_one_by_one,
-                               set_union_default)->Arg(8);
-  benchmark::RegisterBenchmark("Chunks_GC_NoExp",
-                               BM_merge_chunks,
-                               chunks_gc_nexp,
-                               merge_one_by_one,
-                               set_union_custom)->Arg(8);
-
+//  grammar::GrammarCompressedChunks<grammar::SLP<>> chunks_gc(
+//      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+//  std::cout << "  *** |Chunks_GC| = " << sdsl::size_in_bytes(chunks_gc) << std::endl;
+//  benchmark::RegisterBenchmark("Chunks_GC",
+//                               BM_merge_chunks,
+//                               chunks_gc,
+//                               merge_one_by_one,
+//                               set_union_default)->Arg(8);
+//  benchmark::RegisterBenchmark("Chunks_GC",
+//                               BM_merge_chunks,
+//                               chunks_gc,
+//                               merge_one_by_one,
+//                               set_union_custom)->Arg(8);
+//
+//  grammar::GrammarCompressedChunks<grammar::SLP<>, false> chunks_gc_nexp(
+//      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+//  std::cout << "  *** |Chunks_GC_NoExp| = " << sdsl::size_in_bytes(chunks_gc_nexp) << std::endl;
+//  benchmark::RegisterBenchmark("Chunks_GC_NoExp",
+//                               BM_merge_chunks,
+//                               chunks_gc_nexp,
+//                               merge_one_by_one,
+//                               set_union_default)->Arg(8);
+//  benchmark::RegisterBenchmark("Chunks_GC_NoExp",
+//                               BM_merge_chunks,
+//                               chunks_gc_nexp,
+//                               merge_one_by_one,
+//                               set_union_custom)->Arg(8);
+//
   grammar::GCChunks<grammar::SLP<>> gcchunks(chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
   std::cout << "  *** |GCChunks| = " << sdsl::size_in_bytes(gcchunks) << std::endl;
   benchmark::RegisterBenchmark("GCChunks", BM_merge_chunks, gcchunks, merge_one_by_one, set_union_default)->Arg(8);
+  benchmark::RegisterBenchmark("GCChunks_All", BM_merge_gcchunks, gcchunks, merge_one_by_one, set_union_default)->Arg(8);
   benchmark::RegisterBenchmark("GCChunks", BM_merge_chunks, gcchunks, merge_one_by_one, set_union_custom)->Arg(8);
+  benchmark::RegisterBenchmark("GCChunks_All", BM_merge_gcchunks, gcchunks, merge_one_by_one, set_union_custom)->Arg(8);
 
   grammar::GCChunks<grammar::SLP<sdsl::int_vector<>, sdsl::int_vector<>>,
                     grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>,
@@ -192,13 +264,19 @@ int main(int argc, char *argv[]) {
       bit_compress,
       bit_compress,
       bit_compress);
-//  std::cout << "  *** |GCChunks<bc>| = " << sdsl::size_in_bytes(gcchunks_bc) << std::endl;
+  std::cout << "  *** |GCChunks<bc>| = " << sdsl::size_in_bytes(gcchunks_bc) << std::endl;
   benchmark::RegisterBenchmark("GCChunks<bc>",
                                BM_merge_chunks,
                                gcchunks_bc,
                                merge_one_by_one,
                                set_union_default)->Arg(8);
+  benchmark::RegisterBenchmark("GCChunks<bc>_All",
+                               BM_merge_gcchunks,
+                               gcchunks_bc,
+                               merge_one_by_one,
+                               set_union_default)->Arg(8);
   benchmark::RegisterBenchmark("GCChunks<bc>", BM_merge_chunks, gcchunks_bc, merge_one_by_one, set_union_custom)->Arg(8);
+  benchmark::RegisterBenchmark("GCChunks<bc>_All", BM_merge_gcchunks, gcchunks_bc, merge_one_by_one, set_union_custom)->Arg(8);
 
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
