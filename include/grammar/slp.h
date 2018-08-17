@@ -142,8 +142,21 @@ class SLP {
     std::vector<VariableType> span = {};
     span.reserve(SpanLength(i));
 
-    GetSpan(i, span);
+    Span(i, back_inserter(span));
     return span;
+  }
+
+  template<typename _OI>
+  void Span(VariableType i, _OI &&_out) const {
+    if (IsTerminal(i)) {
+      _out = i;
+      ++_out;
+      return;
+    }
+
+    auto children = (*this)[i];
+    Span(children.first, _out);
+    Span(children.second, _out);
   }
 
   /**
@@ -212,17 +225,6 @@ class SLP {
   VariableType sigma_ = 0;
   _VarsContainer rules_;
   _LengthsContainer lengths_;
-
-  void GetSpan(VariableType i, std::vector<VariableType> &_span) const {
-    if (IsTerminal(i)) {
-      _span.emplace_back(i);
-      return;
-    }
-
-    auto children = (*this)[i];
-    GetSpan(children.first, _span);
-    GetSpan(children.second, _span);
-  }
 };
 
 
