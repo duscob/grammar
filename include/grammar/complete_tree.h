@@ -128,6 +128,7 @@ class BalanceTreeByWeight {
   }
 };
 
+
 /**
  * Tree Node
  *
@@ -136,7 +137,7 @@ class BalanceTreeByWeight {
  */
 template<typename Weight>
 struct TreeNode {
-  std::size_t id;
+  std::size_t id = 0;
   Weight weight;
   std::pair<std::size_t, std::size_t> cover;
   std::pair<std::size_t, std::size_t> children;
@@ -255,11 +256,14 @@ void MergeSetsOneByOne(_II _first, _II _last, const _Sets &_sets, _Result &_resu
 }
 
 
-// todo
 class MergeSetsOneByOneFunctor {
  public:
   template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
-  inline void operator()(_II _first, _II _last, const _Sets &_sets, _Result &_result, const _SetUnion &_set_union) const {
+  inline void operator()(_II _first,
+                         _II _last,
+                         const _Sets &_sets,
+                         _Result &_result,
+                         const _SetUnion &_set_union) const {
     MergeSetsOneByOne(_first, _last, _sets, _result, _set_union);
   }
 };
@@ -327,6 +331,19 @@ void MergeSetsBinaryTree(_II _first, _II _last, const _Sets &_sets, _Result &_re
 
   _result.swap(part_results.front().second);
 }
+
+
+class MergeSetsBinaryTreeFunctor {
+ public:
+  template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
+  inline void operator()(_II _first,
+                         _II _last,
+                         const _Sets &_sets,
+                         _Result &_result,
+                         const _SetUnion &_set_union) const {
+    MergeSetsBinaryTree(_first, _last, _sets, _result, _set_union);
+  }
+};
 
 }
 
