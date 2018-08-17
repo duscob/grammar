@@ -10,7 +10,7 @@
 #include <functional>
 #include <algorithm>
 
-#include "complete_tree.h"
+#include "algorithm.h"
 
 
 namespace grammar {

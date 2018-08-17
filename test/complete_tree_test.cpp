@@ -5,7 +5,7 @@
 
 #include <gtest/gtest.h>
 
-#include "grammar/complete_tree.h"
+#include "grammar/algorithm.h"
 
 
 class SimpleWrapper {

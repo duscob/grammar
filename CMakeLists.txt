@@ -51,7 +51,7 @@ set(SOURCE_FILES include/grammar/re_pair.h
         src/repair/heap.cpp
         src/repair/hash.h
         src/repair/hash.cpp
-        include/grammar/complete_tree.h
+        include/grammar/algorithm.h
         include/grammar/slp.h
         include/grammar/slp_metadata.h
         include/grammar/slp_interface.h
