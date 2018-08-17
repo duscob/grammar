@@ -120,6 +120,8 @@ class PTS {
 template<typename _ObjContainer = std::vector<uint32_t>, typename _PosContainer = std::vector<uint32_t>>
 class Chunks {
  public:
+  typedef std::size_t size_type;
+
   Chunks() = default;
 
   template<typename __ObjContainer, typename __PosContainer, typename _ActionObj = NoAction, typename _ActionPos = NoAction>
@@ -214,8 +216,6 @@ class Chunks {
   bool operator!=(const Chunks<__ObjContainer, __PosContainer> &_chunks) const {
     return !(*this == _chunks);
   }
-
-  typedef std::size_t size_type;
 
   std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
     std::size_t written_bytes = 0;
@@ -361,9 +361,26 @@ class SampledPTS {
 
 
 template<typename _SLP, bool kExpand = true, typename _Chunks = Chunks<std::vector<typename _SLP::VariableType>>>
-class GrammarCompressedChunks : public _Chunks {
+class GrammarCompressedChunks {
  public:
+  typedef std::size_t size_type;
+
   GrammarCompressedChunks() = default;
+
+  template<typename __SLP,
+      typename __Chunks,
+      typename __SLPAct1 = NoAction,
+      typename __SLPAct2 = NoAction,
+      typename __ChunksAct1 = NoAction,
+      typename __ChunksAct2 = NoAction>
+  GrammarCompressedChunks(const GrammarCompressedChunks<__SLP, kExpand, __Chunks> &_gcchunks,
+                          __SLPAct1 &&_slp_act1 = NoAction(),
+                          __SLPAct2 &&_slp_act2 = NoAction(),
+                          __ChunksAct1 &&_chunks_act1 = NoAction(),
+                          __ChunksAct2 &&_chunks_act2 = NoAction()):
+      slp_(_gcchunks.GetSLP(), _slp_act1, _slp_act2),
+      chunks_(_gcchunks.GetChunks(), _chunks_act1, _chunks_act2) {
+  }
 
   template<typename _II, typename __Chunks, typename _Encoder>
   GrammarCompressedChunks(_II _begin, _II _end, const __Chunks &_chunks, _Encoder &_encoder) {
@@ -381,19 +398,20 @@ class GrammarCompressedChunks : public _Chunks {
     auto wrapper = BuildSLPWrapper(slp_);
     _encoder.Encode(_begin, _end, wrapper, report_cseq);
 
-    this->pos_.reserve(_chunks.size());
+    std::vector<typename _SLP::VariableType> set;
 
     std::size_t pos = 0;
     std::size_t inner_pos = 0;
     for (int i = 1; i <= _chunks.size();
-         ++i, (kExpand ? NoAction()() : std::sort(this->objs_.begin() + this->pos_.back(), this->objs_.end()))) {
-      this->pos_.emplace_back(this->objs_.size());
+         ++i, (kExpand ? NoAction()() : std::sort(set.begin(), set.end())), chunks_.Insert(set.begin(), set.end())) {
+
+      set.clear();
 
       auto size = _chunks[i].size();
 
       if (inner_pos != 0) {
         // Find inner variables
-        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, std::back_inserter(this->objs_), cseq[pos]);
+        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, back_inserter(set), cseq[pos]);
 
         auto rest = slp_.SpanLength(cseq[pos]) - inner_pos;
         if (rest <= size) {
@@ -410,7 +428,7 @@ class GrammarCompressedChunks : public _Chunks {
       std::size_t var_len;
       while (pos < cseq.size() && (var_len = slp_.SpanLength(cseq[pos])) <= size) {
         // Add complete covered variables
-        this->objs_.emplace_back(cseq[pos]);
+        set.emplace_back(cseq[pos]);
 
         size -= var_len;
         ++pos;
@@ -418,11 +436,15 @@ class GrammarCompressedChunks : public _Chunks {
 
       if (0 < size) {
         // Find inner variables
-        grammar::ComputeSpanCoverEnding(slp_, size, std::back_inserter(this->objs_), cseq[pos]);
+        grammar::ComputeSpanCoverEnding(slp_, size, back_inserter(set), cseq[pos]);
       }
 
       inner_pos = size;
     }
+  }
+
+  auto size() const {
+    return chunks_.size();
   }
 
   template<typename _Index>
@@ -433,17 +455,17 @@ class GrammarCompressedChunks : public _Chunks {
       >::value,
       std::vector<uint32_t>
   >::type {
-    assert(i <= this->pos_.size());
+    assert(i <= chunks_.size());
 
     std::vector<uint32_t> set;
 
-    auto end = (i < this->pos_.size()) ? this->objs_.begin() + this->pos_[i] : this->objs_.end();
-    for (auto it = this->objs_.begin() + this->pos_[i - 1]; it != end; ++it) {
-      if (slp_.IsTerminal(*it)) {
-        set.push_back(*it);
+    auto chunk = chunks_[i];
+    for (auto it = chunk.begin(); it != chunk.end(); ++it) {
+      auto value = *it;
+      if (slp_.IsTerminal(value)) {
+        set.push_back(value);
       } else {
-        const auto &span = slp_.Span(*it);
-        std::copy(span.begin(), span.end(), back_inserter(set));
+        slp_.Span(value, back_inserter(set));
       }
     }
     return set;
@@ -457,32 +479,43 @@ class GrammarCompressedChunks : public _Chunks {
       >::value,
       typename _Chunks::FakeContainer
   >::type {
-    return _Chunks::operator[](i);
+    return chunks_[i];
   }
 
   const _SLP &GetSLP() const {
     return slp_;
   }
 
-  bool operator==(const GrammarCompressedChunks<_SLP> &_chunks) const {
-    return Chunks<std::vector<typename _SLP::VariableType>>::operator==(_chunks) && slp_ == _chunks.slp_;
+  const _Chunks &GetChunks() const {
+    return chunks_;
   }
 
-  bool operator!=(const GrammarCompressedChunks<_SLP> &_compact_chunks) const {
-    return !(*this == _compact_chunks);
+  template<typename __SLP, typename __Chunks>
+  bool operator==(const GrammarCompressedChunks<__SLP, kExpand, __Chunks> &_gcchunks) const {
+    return slp_ == _gcchunks.GetSLP() && chunks_ == _gcchunks.GetChunks();
+  }
+
+  template<typename __SLP, typename __Chunks>
+  bool operator!=(const GrammarCompressedChunks<__SLP, kExpand, __Chunks> &_gcchunks) const {
+    return !(*this == _gcchunks);
   }
 
   std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
-    return Chunks<std::vector<typename _SLP::VariableType>>::serialize(out, v, name) + sdsl::serialize(slp_, out);
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(slp_, out);
+    written_bytes += sdsl::serialize(chunks_, out);
+
+    return written_bytes;
   }
 
   void load(std::istream &in) {
-    Chunks<std::vector<typename _SLP::VariableType>>::load(in);
     sdsl::load(slp_, in);
+    sdsl::load(chunks_, in);
   }
 
  private:
   _SLP slp_;
+  _Chunks chunks_;
 };
 
 
