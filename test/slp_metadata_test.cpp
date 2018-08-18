@@ -251,14 +251,14 @@ TEST_P(Chunks_TF, GrammarCompressedChunk) {
   }
 
   grammar::RePairEncoder<false> encoder;
-  grammar::GrammarCompressedChunks<grammar::SLP<>, false> compact_chunks(
+  grammar::GCChunks<grammar::SLP<>, false> gcchunks(
       chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
 
   const auto &e_sets = std::get<1>(GetParam());
-  EXPECT_EQ(compact_chunks.size(), e_sets.size());
+  EXPECT_EQ(gcchunks.size(), e_sets.size());
 
   for (int i = 0; i < sets.size(); ++i) {
-    auto s = compact_chunks[i + 1];
+    auto s = gcchunks[i + 1];
     ASSERT_EQ(s.size(), e_sets[i].size()) << i;
     EXPECT_TRUE(std::equal(s.begin(), s.end(), e_sets[i].begin()));
   }
@@ -274,14 +274,14 @@ TEST_P(Chunks_TF, GrammarCompressedChunkExpand) {
   }
 
   grammar::RePairEncoder<false> encoder;
-  grammar::GrammarCompressedChunks<grammar::SLP<>, true> compact_chunks(
+  grammar::GCChunks<grammar::SLP<>, true> gcchunks(
       chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
 
 //  const auto &e_sets = std::get<1>(GetParam());
-  ASSERT_EQ(compact_chunks.size(), sets.size());
+  ASSERT_EQ(gcchunks.size(), sets.size());
 
   for (int i = 0; i < sets.size(); ++i) {
-    auto s = compact_chunks[i + 1];
+    auto s = gcchunks[i + 1];
     EXPECT_EQ(s, sets[i]) << i;
 //    ASSERT_EQ(s.size(), sets[i].size()) << i;
 //    EXPECT_TRUE(std::equal(s.begin(), s.end(), sets[i].begin()));
@@ -298,22 +298,22 @@ TEST_P(Chunks_TF, GrammarCompressedChunkSerialization) {
   }
 
   grammar::RePairEncoder<false> encoder;
-  grammar::GrammarCompressedChunks<grammar::SLP<>> compact_chunks(
+  grammar::GCChunks<grammar::SLP<>> gcchunks(
       chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
 
   {
     std::ofstream out("tmp.slp_metadata", std::ios::binary);
-    compact_chunks.serialize(out);
+    gcchunks.serialize(out);
   }
 
-  grammar::GrammarCompressedChunks<grammar::SLP<>> compact_chunks_loaded;
-  EXPECT_FALSE(compact_chunks == compact_chunks_loaded);
+  grammar::GCChunks<grammar::SLP<>> compact_chunks_loaded;
+  EXPECT_FALSE(gcchunks == compact_chunks_loaded);
 
   {
     std::ifstream in("tmp.slp_metadata", std::ios::binary);
     compact_chunks_loaded.load(in);
   }
-  EXPECT_TRUE(compact_chunks == compact_chunks_loaded);
+  EXPECT_TRUE(gcchunks == compact_chunks_loaded);
 }
 
 
@@ -344,6 +344,91 @@ INSTANTIATE_TEST_CASE_P(
         std::make_tuple(
             Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2}, {3, 1}, {2}},
             Sets{{4, 6}, {6}, {3}, {5}, {1, 3}, {2}}
+        )
+    )
+);
+
+
+class GCChunksTV_TF : public ::testing::TestWithParam<std::tuple<Sets, Sets, Sets>> {};
+
+
+TEST_P(GCChunksTV_TF, ComputeAndAccess) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.Insert(item.begin(), item.end());
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::GCChunksTV<grammar::SLP<>>
+      gcchunkstv(chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+
+  const auto &t_sets = std::get<1>(GetParam());
+  const auto &v_sets = std::get<2>(GetParam());
+  EXPECT_EQ(gcchunkstv.size(), t_sets.size());
+
+  for (int i = 0; i < sets.size(); ++i) {
+    {
+      const auto &ts = gcchunkstv[i + 1];
+      ASSERT_EQ(ts.size(), t_sets[i].size()) << i;
+      EXPECT_TRUE(std::equal(ts.begin(), ts.end(), t_sets[i].begin()));
+    }
+    {
+      const auto &vs = gcchunkstv.GetVariableSet(i + 1);
+      ASSERT_EQ(vs.size(), v_sets[i].size()) << i;
+      EXPECT_TRUE(std::equal(vs.begin(), vs.end(), v_sets[i].begin()));
+    }
+  }
+}
+
+
+TEST_P(GCChunksTV_TF, Serialization) {
+  const auto &sets = std::get<0>(GetParam());
+
+  grammar::Chunks<> chunks;
+  for (const auto &item : sets) {
+    chunks.Insert(item.begin(), item.end());
+  }
+
+  grammar::RePairEncoder<false> encoder;
+  grammar::GCChunksTV<grammar::SLP<>>
+      gcchunkstv(chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+
+  {
+    std::ofstream out("tmp.slp_metadata", std::ios::binary);
+    gcchunkstv.serialize(out);
+  }
+
+  grammar::GCChunksTV<grammar::SLP<>> gc_chunks_loaded;
+  EXPECT_FALSE(gcchunkstv == gc_chunks_loaded);
+
+  {
+    std::ifstream in("tmp.slp_metadata", std::ios::binary);
+    gc_chunks_loaded.load(in);
+  }
+  EXPECT_TRUE(gcchunkstv == gc_chunks_loaded);
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    Chunks,
+    GCChunksTV_TF,
+    ::testing::Values(
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}},
+            Sets{{4}, {}, {3}, {}, {}},
+            Sets{{6}, {6}, {}, {6}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}, {1, 2, 4}},
+            Sets{{4}, {}, {3}, {}, {}, {4}},
+            Sets{{6}, {6}, {}, {6}, {5}, {5}}
+        ),
+        std::make_tuple(
+            Sets{{1, 2, 3, 4}, {1, 2, 3}, {3}, {1, 2, 3}, {1, 2}, {1}, {2, 4}},
+            Sets{{4}, {}, {3}, {}, {}, {1}, {2, 4}},
+            Sets{{6}, {6}, {}, {6}, {5}, {}, {}}
         )
     )
 );

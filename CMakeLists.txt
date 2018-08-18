@@ -3,6 +3,8 @@
 
 option(grammar_build_tests "Build all of grammar's tests." ON)
 
+option(grammar_build_benchmarks "Build all of grammar's benchmarks." ON)
+
 option(grammar_install "Enable installation of grammar. (Projects embedding grammar may want to turn this OFF.)" ON)
 
 
@@ -49,7 +51,7 @@ set(SOURCE_FILES include/grammar/re_pair.h
         src/repair/heap.cpp
         src/repair/hash.h
         src/repair/hash.cpp
-        include/grammar/complete_tree.h
+        include/grammar/algorithm.h
         include/grammar/slp.h
         include/grammar/slp_metadata.h
         include/grammar/slp_interface.h
@@ -104,7 +106,18 @@ if (grammar_build_tests)
 
     cxx_test_with_flags_and_args(slp_test "" "gtest;gtest_main;grammar" "" test/slp_test.cpp)
 
+    cxx_test_with_flags_and_args(merge_sets_test "" "gtest;gtest_main;grammar" "" test/merge_sets_test.cpp)
+
     cxx_test_with_flags_and_args(slp_metadata_test "" "gtest;gtest_main;grammar;sdsl" "" test/slp_metadata_test.cpp)
 
     cxx_test_with_flags_and_args(sampled_slp_test "" "gtest;gtest_main;grammar" "" test/sampled_slp_test.cpp)
+endif ()
+
+
+if (grammar_build_benchmarks)
+    include(ConfigGBenchmark)
+
+    find_package(Boost COMPONENTS filesystem system REQUIRED)
+
+    cxx_executable_with_flags(chunks_bm "" "gflags;benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
 endif ()

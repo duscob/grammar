@@ -6,6 +6,7 @@
 #define GRAMMAR_COMPLETE_TREE_H
 
 #include <vector>
+#include <algorithm>
 
 
 namespace grammar {
@@ -127,6 +128,7 @@ class BalanceTreeByWeight {
   }
 };
 
+
 /**
  * Tree Node
  *
@@ -135,7 +137,7 @@ class BalanceTreeByWeight {
  */
 template<typename Weight>
 struct TreeNode {
-  std::size_t id;
+  std::size_t id = 0;
   Weight weight;
   std::pair<std::size_t, std::size_t> cover;
   std::pair<std::size_t, std::size_t> children;
@@ -184,6 +186,162 @@ class TreeHeight {
   template<typename Value>
   Value operator()(const Value &_v1, const Value &_v2) const {
     return std::max(_v1, _v2) + 1;
+  }
+};
+
+
+template<typename _II1, typename _II2, typename _OI>
+inline _OI SetUnion(_II1 __first1, _II1 __last1, _II2 __first2, _II2 __last2, _OI __result) {
+  if (__first1 != __last1 && __first2 != __last2) {
+    bool upd1 = false;
+    bool upd2 = false;
+    auto val1 = *__first1;
+    auto val2 = *__first2;
+    while (__first1 != __last1 && __first2 != __last2) {
+      if (upd1) {
+        val1 = *__first1;
+        upd1 = false;
+      }
+      if (upd2) {
+        val2 = *__first2;
+        upd2 = false;
+      }
+
+      if (val1 < val2) {
+        *__result = val1;
+        ++__first1;
+        upd1 = true;
+      } else if (val2 < val1) {
+        *__result = val2;
+        ++__first2;
+        upd2 = true;
+      } else {
+        *__result = val1;
+        ++__first1;
+        upd1 = true;
+        ++__first2;
+        upd2 = true;
+      }
+      ++__result;
+    }
+  }
+
+  return std::copy(__first2, __last2, std::copy(__first1, __last1, __result));
+};
+
+
+template<typename _II, typename _Sets, typename _Result>
+void MergeSetsOneByOne(_II _first, _II _last, const _Sets &_sets, _Result &_result) {
+  auto default_set_union = [](auto _first1, auto _last1, auto _first2, auto _last2, auto _result) -> auto {
+    return std::set_union(_first1, _last1, _first2, _last2, _result);
+  };
+
+  MergeSetsOneByOne(_first, _last, _sets, _result, default_set_union);
+}
+
+
+template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
+void MergeSetsOneByOne(_II _first, _II _last, const _Sets &_sets, _Result &_result, const _SetUnion &_set_union) {
+  _Result tmp_set;
+
+  for (auto it = _first; it != _last; ++it) {
+    const auto &set = _sets[*it];
+
+    tmp_set.resize(_result.size() + set.size());
+    tmp_set.swap(_result);
+
+    auto last_it = _set_union(tmp_set.begin(), tmp_set.end(), set.begin(), set.end(), _result.begin());
+    _result.resize(last_it - _result.begin());
+  }
+}
+
+
+class MergeSetsOneByOneFunctor {
+ public:
+  template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
+  inline void operator()(_II _first,
+                         _II _last,
+                         const _Sets &_sets,
+                         _Result &_result,
+                         const _SetUnion &_set_union) const {
+    MergeSetsOneByOne(_first, _last, _sets, _result, _set_union);
+  }
+};
+
+
+template<typename _II, typename _Sets, typename _Result>
+void MergeSetsBinaryTree(_II _first, _II _last, const _Sets &_sets, _Result &_result) {
+  auto default_set_union = [](auto _first1, auto _last1, auto _first2, auto _last2, auto _result) -> auto {
+    return std::set_union(_first1, _last1, _first2, _last2, _result);
+  };
+
+  MergeSetsBinaryTree(_first, _last, _sets, _result, default_set_union);
+}
+
+
+template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
+void MergeSetsBinaryTree(_II _first, _II _last, const _Sets &_sets, _Result &_result, _SetUnion _set_union) {
+  _Result tmp_merge;
+
+  auto merge_tmp = [&tmp_merge, &_set_union](const auto &set1, const auto &set2) {
+    tmp_merge.resize(set1.size() + set2.size());
+    auto last_it = _set_union(set1.begin(), set1.end(), set2.begin(), set2.end(), tmp_merge.begin());
+    tmp_merge.resize(last_it - tmp_merge.begin());
+  };
+
+  auto length = std::distance(_first, _last);
+  if (length == 1) {
+    merge_tmp(_result, _sets[*_first]);
+
+    _result.swap(tmp_merge);
+
+    return;
+  }
+
+  std::vector<std::pair<uint8_t, _Result>> part_results = {{1, {}}};
+  part_results.front().second.swap(_result);
+
+  while (part_results.size() != 1 || _first != _last) {
+    std::size_t size;
+    while ((size = part_results.size()) > 1
+        && (part_results[size - 1].first == part_results[size - 2].first
+            || _first == _last)) {
+      merge_tmp(part_results[size - 1].second, part_results[size - 2].second);
+
+      part_results[size - 2].second.swap(tmp_merge);
+      ++part_results[size - 2].first;
+      part_results.pop_back();
+    }
+
+    if (_first != _last) {
+      auto next = _first + 1;
+      if (next == _last) {
+        merge_tmp(part_results.back().second, _sets[*_first]);
+
+        part_results.back().second.swap(tmp_merge);
+        ++_first;
+      } else {
+        merge_tmp(_sets[*_first], _sets[*next]);
+
+        part_results.emplace_back(1, std::move(tmp_merge));
+        _first += 2;
+      }
+    }
+  }
+
+  _result.swap(part_results.front().second);
+}
+
+
+class MergeSetsBinaryTreeFunctor {
+ public:
+  template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
+  inline void operator()(_II _first,
+                         _II _last,
+                         const _Sets &_sets,
+                         _Result &_result,
+                         const _SetUnion &_set_union) const {
+    MergeSetsBinaryTree(_first, _last, _sets, _result, _set_union);
   }
 };
 
