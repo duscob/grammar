@@ -161,11 +161,11 @@ int main(int argc, char *argv[]) {
                                chunks,
                                merge_one_by_one,
                                set_union_default)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("Chunks_set_union_custom",
-                               BM_merge_chunks,
-                               chunks,
-                               merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("Chunks_set_union_custom",
+//                               BM_merge_chunks,
+//                               chunks,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
 
   auto bit_compress = [](auto &_v) { sdsl::util::bit_compress(_v); };
 
@@ -176,11 +176,11 @@ int main(int argc, char *argv[]) {
                                chunks_bc,
                                merge_one_by_one,
                                set_union_default)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("Chunks<BC>_set_union_custom",
-                               BM_merge_chunks,
-                               chunks_bc,
-                               merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("Chunks<BC>_set_union_custom",
+//                               BM_merge_chunks,
+//                               chunks_bc,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
 
 //  grammar::Chunks<sdsl::enc_vector<>, sdsl::enc_vector<>> chunks_encv(chunks);
 //  std::cout << "  *** |Chunks<EncV>| = " << sdsl::size_in_bytes(chunks_encv) << std::endl;
@@ -217,15 +217,15 @@ int main(int argc, char *argv[]) {
                                gcchunks,
                                merge_one_by_one,
                                set_union_default)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("GCChunks_set_union_custom",
-                               BM_merge_chunks,
-                               gcchunks,
-                               merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunks_set_union_custom",
+//                               BM_merge_chunks,
+//                               gcchunks,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
 
   grammar::GCChunks<grammar::SLP<sdsl::int_vector<>, sdsl::int_vector<>>,
-                                   true,
-                                   grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>>
+                    true,
+                    grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>>
       gcchunks_bc(gcchunks, bit_compress, bit_compress, bit_compress, bit_compress);
   std::cout << "  *** |GCChunks<BC>| = " << sdsl::size_in_bytes(gcchunks_bc) << std::endl;
   benchmark::RegisterBenchmark("GCChunks<BC>",
@@ -233,11 +233,40 @@ int main(int argc, char *argv[]) {
                                gcchunks_bc,
                                merge_one_by_one,
                                set_union_default)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("GCChunks<BC>_set_union_custom",
+//  benchmark::RegisterBenchmark("GCChunks<BC>_set_union_custom",
+//                               BM_merge_chunks,
+//                               gcchunks_bc,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+
+  grammar::GCChunks<grammar::BasicSLP<>> gcchunks_bslp(gcchunks);
+  std::cout << "  *** |GCChunks<BSLP>| = " << sdsl::size_in_bytes(gcchunks_bslp) << std::endl;
+  benchmark::RegisterBenchmark("GCChunks<BSLP>",
                                BM_merge_chunks,
-                               gcchunks_bc,
+                               gcchunks_bslp,
                                merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+                               set_union_default)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunks<BSLP>_set_union_custom",
+//                               BM_merge_chunks,
+//                               gcchunks_bslp,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+
+  grammar::GCChunks<grammar::BasicSLP<sdsl::int_vector<>>,
+                    true,
+                    grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>>
+      gcchunks_bslp_bc(gcchunks, bit_compress, bit_compress, bit_compress, bit_compress);
+  std::cout << "  *** |GCChunks<BSLP,BC>| = " << sdsl::size_in_bytes(gcchunks_bslp_bc) << std::endl;
+  benchmark::RegisterBenchmark("GCChunks<BSLP,BC>",
+                               BM_merge_chunks,
+                               gcchunks_bslp_bc,
+                               merge_one_by_one,
+                               set_union_default)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunks<BSLP,BC>_set_union_custom",
+//                               BM_merge_chunks,
+//                               gcchunks_bslp_bc,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
 
 //  grammar::GCChunks<grammar::SLP<>, false> gcchunks_nexp(
 //      chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
@@ -253,32 +282,33 @@ int main(int argc, char *argv[]) {
 //                               merge_one_by_one,
 //                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
 
-  grammar::GCChunksTV<grammar::SLP<>> gcchunkstv(chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
+  grammar::GCChunksTV<grammar::SLP<>>
+      gcchunkstv(chunks.GetObjects().begin(), chunks.GetObjects().end(), chunks, encoder);
   std::cout << "  *** |GCChunksTV| = " << sdsl::size_in_bytes(gcchunkstv) << std::endl;
-  benchmark::RegisterBenchmark("GCChunksTV",
-                               BM_merge_chunks,
-                               gcchunkstv,
-                               merge_one_by_one,
-                               set_union_default)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("GCChunks_All",
+//  benchmark::RegisterBenchmark("GCChunksTV",
+//                               BM_merge_chunks,
+//                               gcchunkstv,
+//                               merge_one_by_one,
+//                               set_union_default)->RangeMultiplier(2)->Range(4, 16);
+  benchmark::RegisterBenchmark("GCChunksTV_All",
                                BM_merge_gcchunks,
                                gcchunkstv,
                                merge_one_by_one,
                                set_union_default)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("GCChunks_set_union_custom",
-                               BM_merge_chunks,
-                               gcchunkstv,
-                               merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("GCChunks_All_set_union_custom",
-                               BM_merge_gcchunks,
-                               gcchunkstv,
-                               merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunksTV_set_union_custom",
+//                               BM_merge_chunks,
+//                               gcchunkstv,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunksTV_All_set_union_custom",
+//                               BM_merge_gcchunks,
+//                               gcchunkstv,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
 
   grammar::GCChunksTV<grammar::SLP<sdsl::int_vector<>, sdsl::int_vector<>>,
-                    grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>,
-                    grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>> gcchunkstv_bc(
+                      grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>,
+                      grammar::Chunks<sdsl::int_vector<>, sdsl::int_vector<>>> gcchunkstv_bc(
       gcchunkstv.GetSLP(),
       gcchunkstv.GetTerminalChunks(),
       gcchunkstv.GetVariableChunks(),
@@ -289,26 +319,26 @@ int main(int argc, char *argv[]) {
       bit_compress,
       bit_compress);
   std::cout << "  *** |GCChunksTV<bc>| = " << sdsl::size_in_bytes(gcchunkstv_bc) << std::endl;
-  benchmark::RegisterBenchmark("GCChunksTV<bc>",
-                               BM_merge_chunks,
-                               gcchunkstv_bc,
-                               merge_one_by_one,
-                               set_union_default)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunksTV<bc>",
+//                               BM_merge_chunks,
+//                               gcchunkstv_bc,
+//                               merge_one_by_one,
+//                               set_union_default)->RangeMultiplier(2)->Range(4, 16);
   benchmark::RegisterBenchmark("GCChunksTV<bc>_All",
                                BM_merge_gcchunks,
                                gcchunkstv_bc,
                                merge_one_by_one,
                                set_union_default)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("GCChunksTV<bc>_set_union_custom",
-                               BM_merge_chunks,
-                               gcchunkstv_bc,
-                               merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
-  benchmark::RegisterBenchmark("GCChunksTV<bc>_All_set_union_custom",
-                               BM_merge_gcchunks,
-                               gcchunkstv_bc,
-                               merge_one_by_one,
-                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunksTV<bc>_set_union_custom",
+//                               BM_merge_chunks,
+//                               gcchunkstv_bc,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
+//  benchmark::RegisterBenchmark("GCChunksTV<bc>_All_set_union_custom",
+//                               BM_merge_gcchunks,
+//                               gcchunkstv_bc,
+//                               merge_one_by_one,
+//                               set_union_custom)->RangeMultiplier(2)->Range(4, 16);
 
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
