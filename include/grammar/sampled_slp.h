@@ -277,6 +277,75 @@ class CombinedSLP : public _SLP, public _SampledSLP {
   _LeavesContainer leaves_;
 };
 
+
+template<typename _SLP, typename _SampledSLP, typename _Chunks>
+class LightSLP {
+ public:
+  template<typename _II, typename _Encoder, typename _CombinedSLP>
+  void Compute(_II _first, _II _last, _Encoder _encoder, const _CombinedSLP &_cslp) {
+    std::vector<typename _SLP::VariableType> cseq;
+
+    auto report_cseq = [&cseq](auto v) {
+      cseq.emplace_back(v);
+    };
+
+    auto wrapper = BuildSLPWrapper(slp_);
+    _encoder.Encode(_first, _last, wrapper, report_cseq);
+
+    std::vector<typename _SLP::VariableType> set;
+
+    const auto &leaves = _cslp.GetLeaves();
+
+    std::size_t pos = 0;
+    std::size_t inner_pos = 0;
+    for (int i = 0; i < leaves.size(); ++i, chunks_.Insert(set.begin(), set.end())) {
+
+      set.clear();
+
+      auto size = _cslp.SpanLength(leaves[i]);
+
+      if (inner_pos != 0) {
+        // Find inner variables
+        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, back_inserter(set), cseq[pos]);
+
+        auto rest = slp_.SpanLength(cseq[pos]) - inner_pos;
+        if (rest <= size) {
+          // Get to the end of current variable's expansion
+          size -= rest;
+          ++pos;
+        } else {
+          // Still remain elements in the current variable's expansion
+          inner_pos += size;
+          continue;
+        }
+      }
+
+      std::size_t var_len;
+      while (pos < cseq.size() && (var_len = slp_.SpanLength(cseq[pos])) <= size) {
+        // Add complete covered variables
+        set.emplace_back(cseq[pos]);
+
+        size -= var_len;
+        ++pos;
+      }
+
+      if (0 < size) {
+        // Find inner variables
+        grammar::ComputeSpanCoverEnding(slp_, size, back_inserter(set), cseq[pos]);
+      }
+
+      inner_pos = size;
+    }
+
+    sampled_slp_ = _SampledSLP(_cslp);
+  }
+
+ protected:
+  _SLP slp_;
+  _SampledSLP sampled_slp_;
+  _Chunks chunks_;
+};
+
 }
 
 #endif //GRAMMAR_SAMPLED_SLP_H
