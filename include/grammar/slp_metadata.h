@@ -360,12 +360,19 @@ class SampledPTS {
 };
 
 
+/**
+ * Grammar-Compressed Chunks
+ *
+ * @tparam _SLP
+ * @tparam kExpand
+ * @tparam _Chunks
+ */
 template<typename _SLP, bool kExpand = true, typename _Chunks = Chunks<std::vector<typename _SLP::VariableType>>>
-class GrammarCompressedChunks {
+class GCChunks {
  public:
   typedef std::size_t size_type;
 
-  GrammarCompressedChunks() = default;
+  GCChunks() = default;
 
   template<typename __SLP,
       typename __Chunks,
@@ -373,7 +380,7 @@ class GrammarCompressedChunks {
       typename __SLPAct2 = NoAction,
       typename __ChunksAct1 = NoAction,
       typename __ChunksAct2 = NoAction>
-  GrammarCompressedChunks(const GrammarCompressedChunks<__SLP, kExpand, __Chunks> &_gcchunks,
+  GCChunks(const GCChunks<__SLP, kExpand, __Chunks> &_gcchunks,
                           __SLPAct1 &&_slp_act1 = NoAction(),
                           __SLPAct2 &&_slp_act2 = NoAction(),
                           __ChunksAct1 &&_chunks_act1 = NoAction(),
@@ -383,7 +390,7 @@ class GrammarCompressedChunks {
   }
 
   template<typename _II, typename __Chunks, typename _Encoder>
-  GrammarCompressedChunks(_II _begin, _II _end, const __Chunks &_chunks, _Encoder &_encoder) {
+  GCChunks(_II _begin, _II _end, const __Chunks &_chunks, _Encoder &_encoder) {
     Compute(_begin, _end, _chunks, _encoder);
   }
 
@@ -491,12 +498,12 @@ class GrammarCompressedChunks {
   }
 
   template<typename __SLP, typename __Chunks>
-  bool operator==(const GrammarCompressedChunks<__SLP, kExpand, __Chunks> &_gcchunks) const {
+  bool operator==(const GCChunks<__SLP, kExpand, __Chunks> &_gcchunks) const {
     return slp_ == _gcchunks.GetSLP() && chunks_ == _gcchunks.GetChunks();
   }
 
   template<typename __SLP, typename __Chunks>
-  bool operator!=(const GrammarCompressedChunks<__SLP, kExpand, __Chunks> &_gcchunks) const {
+  bool operator!=(const GCChunks<__SLP, kExpand, __Chunks> &_gcchunks) const {
     return !(*this == _gcchunks);
   }
 
@@ -519,10 +526,17 @@ class GrammarCompressedChunks {
 };
 
 
+/**
+ * Grammar-Compressed Chunks with Terminal & Variables separated
+ *
+ * @tparam _SLP
+ * @tparam _TerminalChunks
+ * @tparam _VariableChunks
+ */
 template<typename _SLP, typename _TerminalChunks = Chunks<>, typename _VariableChunks = Chunks<>>
-class GCChunks {
+class GCChunksTV {
  public:
-  GCChunks() = default;
+  GCChunksTV() = default;
 
   template<typename __SLP,
       typename __TChunks,
@@ -533,7 +547,7 @@ class GCChunks {
       typename __TChunksAct2 = NoAction,
       typename __VChunksAct1 = NoAction,
       typename __VChunksAct2 = NoAction>
-  GCChunks(const __SLP &_slp,
+  GCChunksTV(const __SLP &_slp,
            const __TChunks &_tchunks,
            const __VChunks &_vchunks,
            __SLPAct1 &&_slp_act1 = NoAction(),
@@ -541,13 +555,14 @@ class GCChunks {
            __TChunksAct1 &&_tchunks_act1 = NoAction(),
            __TChunksAct2 &&_tchunks_act2 = NoAction(),
            __VChunksAct1 &&_vchunks_act1 = NoAction(),
-           __VChunksAct2 &&_vchunks_act2 = NoAction()): slp_(_slp, _slp_act1, _slp_act2),
-                                                        tchunks_(_tchunks, _tchunks_act1, _tchunks_act2),
-                                                        vchunks_(_vchunks, _vchunks_act1, _vchunks_act2) {
+           __VChunksAct2 &&_vchunks_act2 = NoAction())
+      : slp_(_slp, _slp_act1, _slp_act2),
+        tchunks_(_tchunks, _tchunks_act1, _tchunks_act2),
+        vchunks_(_vchunks, _vchunks_act1, _vchunks_act2) {
   }
 
   template<typename _II, typename _Chunks, typename _Encoder>
-  GCChunks(_II _first, _II _last, const _Chunks &_chunks, _Encoder &_encoder) {
+  GCChunksTV(_II _first, _II _last, const _Chunks &_chunks, _Encoder &_encoder) {
     Compute(_first, _last, _chunks, _encoder);
   }
 
@@ -641,14 +656,14 @@ class GCChunks {
   }
 
   template<typename __SLP, typename __TChunks, typename __VChunks>
-  bool operator==(const GCChunks<__SLP, __TChunks, __VChunks> &_chunks) const {
+  bool operator==(const GCChunksTV<__SLP, __TChunks, __VChunks> &_chunks) const {
     return slp_ == _chunks.GetSLP()
         && tchunks_ == _chunks.GetTerminalChunks()
         && vchunks_ == _chunks.GetVariableChunks();
   }
 
   template<typename __SLP, typename __TChunks, typename __VChunks>
-  bool operator!=(const GCChunks<__SLP, __TChunks, __VChunks> &_chunks) const {
+  bool operator!=(const GCChunksTV<__SLP, __TChunks, __VChunks> &_chunks) const {
     return !(*this == _chunks);
   }
 
