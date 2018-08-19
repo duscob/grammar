@@ -28,7 +28,7 @@ class SampledSLPLeaves_TF : public ::testing::TestWithParam<std::tuple<std::size
     slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
-      slp_.AddRule(rule.first, rule.second), rule.first;
+      slp_.AddRule(rule.first, rule.second);
     }
   }
 };
@@ -143,7 +143,7 @@ class SampledSLPNodes_TF : public ::testing::TestWithParam<std::tuple<std::size_
     slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
-      slp_.AddRule(rule.first, rule.second), rule.first;
+      slp_.AddRule(rule.first, rule.second);
     }
   }
 };
@@ -216,7 +216,7 @@ class SampledSLPMap_TF : public ::testing::TestWithParam<std::tuple<std::size_t,
     slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
-      slp_.AddRule(rule.first, rule.second), rule.first;
+      slp_.AddRule(rule.first, rule.second);
     }
   }
 };
@@ -252,7 +252,7 @@ TEST_P(SampledSLPMap_TF, CombinedSLPLeafAndPos) {
     cslp.Reset(sigma);
 
     for (auto &&rule : rules) {
-      cslp.AddRule(rule.first, rule.second), rule.first;
+      cslp.AddRule(rule.first, rule.second);
     }
   }
 
@@ -312,7 +312,7 @@ class SampledSLPParent_TF : public ::testing::TestWithParam<std::tuple<std::size
     slp_ = grammar::SLP<>(sigma);
 
     for (auto &&rule : rules) {
-      slp_.AddRule(rule.first, rule.second), rule.first;
+      slp_.AddRule(rule.first, rule.second);
     }
   }
 };
@@ -346,7 +346,7 @@ TEST_P(SampledSLPParent_TF, CombinedSLPFirstChildAndParent) {
     cslp.Reset(sigma);
 
     for (auto &&rule : rules) {
-      cslp.AddRule(rule.first, rule.second), rule.first;
+      cslp.AddRule(rule.first, rule.second);
     }
   }
 
@@ -453,7 +453,7 @@ class SLPSpanCoverFromBottom_TF : public ::testing::TestWithParam<std::tuple<std
     slp_.Reset(sigma);
 
     for (auto &&rule : rules) {
-      slp_.AddRule(rule.first, rule.second), rule.first;
+      slp_.AddRule(rule.first, rule.second);
     }
 
     slp_.ComputeMetadata();
@@ -547,6 +547,81 @@ INSTANTIATE_TEST_CASE_P(
             2,
             Span{1, 3},
             SpanCover{{}, {4, 0}}
+        )
+    )
+);
+
+using Sequence = std::vector<std::size_t>;
+using Partition = std::vector<Sequence>;
+
+
+class ComputePartitionCover_TF : public ::testing::TestWithParam<
+    std::tuple<std::size_t, Rules, Sequence, Sequence, Partition >> {
+ protected:
+  grammar::SLP<> slp_;
+
+// Sets up the test fixture.
+  void SetUp() override {
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    slp_.Reset(sigma);
+
+    for (auto &&rule : rules) {
+      slp_.AddRule(rule.first, rule.second);
+    }
+  }
+};
+
+
+TEST_P(ComputePartitionCover_TF, compute) {
+  auto &cseq = std::get<2>(GetParam());
+  auto &lengths = std::get<3>(GetParam());
+  Sequence partition_id;
+  for (int i = 0; i < lengths.size(); ++i) {
+    partition_id.push_back(i);
+  }
+
+  auto get_length = [&lengths](const auto &i) -> auto {
+    return lengths[i];
+  };
+
+  Partition result;
+  auto action = [&result](auto &_seq) {
+    result.emplace_back(_seq.begin(), _seq.end());
+  };
+
+  auto &e_result = std::get<4>(GetParam());
+  grammar::ComputePartitionCover(slp_, cseq, partition_id, get_length, action, 0);
+
+  EXPECT_EQ(result, e_result);
+}
+
+
+INSTANTIATE_TEST_CASE_P(
+    SLP,
+    ComputePartitionCover_TF,
+    ::testing::Values(
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}},
+            Sequence{4, 6, 6, 3, 3, 6, 2, 5, 1},
+            Sequence{4, 3, 2, 3, 4},
+            Partition{{4, 6}, {6}, {3, 3}, {6}, {2, 5, 1}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}},
+            Sequence{4, 6, 6, 3, 3, 6, 2, 5, 1},
+            Sequence{1, 3, 3, 2, 3, 4},
+            Partition{{4}, {6}, {6}, {3, 3}, {6}, {2, 5, 1}}
+        ),
+        std::make_tuple(
+            4ul,
+            Rules{{2, 1}, {3, 5}},
+            Sequence{4, 6, 6, 3, 3, 6, 2, 5, 1},
+            Sequence{2, 2, 3, 2, 3, 4},
+            Partition{{4, 3}, {5}, {6}, {3, 3}, {6}, {2, 5, 1}}
         )
     )
 );

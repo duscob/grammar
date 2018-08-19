@@ -381,10 +381,10 @@ class GCChunks {
       typename __ChunksAct1 = NoAction,
       typename __ChunksAct2 = NoAction>
   GCChunks(const GCChunks<__SLP, kExpand, __Chunks> &_gcchunks,
-                          __SLPAct1 &&_slp_act1 = NoAction(),
-                          __SLPAct2 &&_slp_act2 = NoAction(),
-                          __ChunksAct1 &&_chunks_act1 = NoAction(),
-                          __ChunksAct2 &&_chunks_act2 = NoAction()):
+           __SLPAct1 &&_slp_act1 = NoAction(),
+           __SLPAct2 &&_slp_act2 = NoAction(),
+           __ChunksAct1 &&_chunks_act1 = NoAction(),
+           __ChunksAct2 &&_chunks_act2 = NoAction()):
       slp_(_gcchunks.GetSLP(), _slp_act1, _slp_act2),
       chunks_(_gcchunks.GetChunks(), _chunks_act1, _chunks_act2) {
   }
@@ -405,48 +405,21 @@ class GCChunks {
     auto wrapper = BuildSLPWrapper(slp_);
     _encoder.Encode(_begin, _end, wrapper, report_cseq);
 
-    std::vector<typename _SLP::VariableType> set;
+    auto get_length = [](const auto &_chunk) -> auto {
+      return _chunk.size();
+    };
 
-    std::size_t pos = 0;
-    std::size_t inner_pos = 0;
-    for (int i = 1; i <= _chunks.size();
-         ++i, (kExpand ? NoAction()() : std::sort(set.begin(), set.end())), chunks_.Insert(set.begin(), set.end())) {
+    if (kExpand) {
+      auto action_expand = [this](auto &_set) { chunks_.Insert(_set.begin(), _set.end()); };
 
-      set.clear();
+      ComputePartitionCover(slp_, cseq, _chunks, get_length, action_expand, 1);
+    } else {
+      auto action_no_expand = [this](auto &_set) {
+        std::sort(_set.begin(), _set.end());
+        chunks_.Insert(_set.begin(), _set.end());
+      };
 
-      auto size = _chunks[i].size();
-
-      if (inner_pos != 0) {
-        // Find inner variables
-        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, back_inserter(set), cseq[pos]);
-
-        auto rest = slp_.SpanLength(cseq[pos]) - inner_pos;
-        if (rest <= size) {
-          // Get to the end of current variable's expansion
-          size -= rest;
-          ++pos;
-        } else {
-          // Still remain elements in the current variable's expansion
-          inner_pos += size;
-          continue;
-        }
-      }
-
-      std::size_t var_len;
-      while (pos < cseq.size() && (var_len = slp_.SpanLength(cseq[pos])) <= size) {
-        // Add complete covered variables
-        set.emplace_back(cseq[pos]);
-
-        size -= var_len;
-        ++pos;
-      }
-
-      if (0 < size) {
-        // Find inner variables
-        grammar::ComputeSpanCoverEnding(slp_, size, back_inserter(set), cseq[pos]);
-      }
-
-      inner_pos = size;
+      ComputePartitionCover(slp_, cseq, _chunks, get_length, action_no_expand, 1);
     }
   }
 
@@ -548,14 +521,14 @@ class GCChunksTV {
       typename __VChunksAct1 = NoAction,
       typename __VChunksAct2 = NoAction>
   GCChunksTV(const __SLP &_slp,
-           const __TChunks &_tchunks,
-           const __VChunks &_vchunks,
-           __SLPAct1 &&_slp_act1 = NoAction(),
-           __SLPAct2 &&_slp_act2 = NoAction(),
-           __TChunksAct1 &&_tchunks_act1 = NoAction(),
-           __TChunksAct2 &&_tchunks_act2 = NoAction(),
-           __VChunksAct1 &&_vchunks_act1 = NoAction(),
-           __VChunksAct2 &&_vchunks_act2 = NoAction())
+             const __TChunks &_tchunks,
+             const __VChunks &_vchunks,
+             __SLPAct1 &&_slp_act1 = NoAction(),
+             __SLPAct2 &&_slp_act2 = NoAction(),
+             __TChunksAct1 &&_tchunks_act1 = NoAction(),
+             __TChunksAct2 &&_tchunks_act2 = NoAction(),
+             __VChunksAct1 &&_vchunks_act1 = NoAction(),
+             __VChunksAct2 &&_vchunks_act2 = NoAction())
       : slp_(_slp, _slp_act1, _slp_act2),
         tchunks_(_tchunks, _tchunks_act1, _tchunks_act2),
         vchunks_(_vchunks, _vchunks_act1, _vchunks_act2) {
@@ -577,54 +550,19 @@ class GCChunksTV {
     auto wrapper = BuildSLPWrapper(slp_);
     _encoder.Encode(_first, _last, wrapper, report_cseq);
 
-    std::vector<typename _SLP::VariableType> set;
-    auto it_last_terminal = set.begin();
+    auto get_length = [](const auto &_chunk) -> auto {
+      return _chunk.size();
+    };
 
-    std::size_t pos = 0;
-    std::size_t inner_pos = 0;
-    for (int i = 1; i <= _chunks.size();
-         ++i,
-             std::sort(set.begin(), set.end()),
-             it_last_terminal = std::lower_bound(set.begin(), set.end(), slp_.Sigma() + 1),
-             tchunks_.Insert(set.begin(), it_last_terminal),
-             vchunks_.Insert(it_last_terminal, set.end())) {
+    auto action = [this](auto &_set) {
+      std::sort(_set.begin(), _set.end());
+      auto it_last_terminal = std::lower_bound(_set.begin(), _set.end(), slp_.Sigma() + 1);
+      tchunks_.Insert(_set.begin(), it_last_terminal);
+      vchunks_.Insert(it_last_terminal, _set.end());
+    };
 
-      set.clear();
 
-      auto size = _chunks[i].size();
-
-      if (inner_pos != 0) {
-        // Find inner variables
-        grammar::ComputeSpanCover(slp_, inner_pos, inner_pos + size, std::back_inserter(set), cseq[pos]);
-
-        auto rest = slp_.SpanLength(cseq[pos]) - inner_pos;
-        if (rest <= size) {
-          // Get to the end of current variable's expansion
-          size -= rest;
-          ++pos;
-        } else {
-          // Still remain elements in the current variable's expansion
-          inner_pos += size;
-          continue;
-        }
-      }
-
-      std::size_t var_len;
-      while (pos < cseq.size() && (var_len = slp_.SpanLength(cseq[pos])) <= size) {
-        // Add complete covered variables
-        set.emplace_back(cseq[pos]);
-
-        size -= var_len;
-        ++pos;
-      }
-
-      if (0 < size) {
-        // Find inner variables
-        grammar::ComputeSpanCoverEnding(slp_, size, std::back_inserter(set), cseq[pos]);
-      }
-
-      inner_pos = size;
-    }
+    ComputePartitionCover(slp_, cseq, _chunks, get_length, action, 1);
   }
 
   auto size() const {
