@@ -135,7 +135,8 @@ void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OI out, std::size
 
 
 template<typename _SLP, typename _OI>
-auto ComputeSpanCoverFromBottom(const _SLP &slp, std::size_t begin, std::size_t end, _OI out) {
+auto ComputeSpanCoverFromBottom(const _SLP &slp, std::size_t begin, std::size_t end, _OI out)
+-> std::pair<decltype(slp.Position(1)), decltype(slp.Position(1))> {
   auto l = slp.Leaf(begin);
   if (slp.Position(l) < begin) ++l;
 

@@ -14,6 +14,7 @@
 
 #include "slp_helper.h"
 #include "slp.h"
+#include "slp_metadata.h"
 
 
 namespace grammar {
@@ -248,6 +249,10 @@ class CombinedSLP : public _SLP, public _SampledSLP {
     return leaves_[_leaf - 1];
   }
 
+  const auto &GetLeaves() const {
+    return leaves_;
+  }
+
   bool operator==(const CombinedSLP &_combined_slp) const {
     return _SLP::operator==(_combined_slp)
         && _SampledSLP::operator==(_combined_slp)
@@ -278,9 +283,13 @@ class CombinedSLP : public _SLP, public _SampledSLP {
 };
 
 
-template<typename _SLP, typename _SampledSLP, typename _Chunks>
-class LightSLP: public _SLP, public _SampledSLP {
+template<typename _SLP = grammar::SLP<>,
+    typename _SampledSLP = grammar::SampledSLP<>,
+    typename _Chunks = grammar::Chunks<>>
+class LightSLP : public _SLP, public _SampledSLP {
  public:
+  using _SLP::size_type;
+
   template<typename _II, typename _Encoder, typename _CombinedSLP>
   void Compute(_II _first, _II _last, _Encoder _encoder, const _CombinedSLP &_cslp) {
     std::vector<typename _SLP::VariableType> cseq;
@@ -292,56 +301,58 @@ class LightSLP: public _SLP, public _SampledSLP {
     auto wrapper = BuildSLPWrapper(*this);
     _encoder.Encode(_first, _last, wrapper, report_cseq);
 
-    std::vector<typename _SLP::VariableType> set;
-
     const auto &leaves = _cslp.GetLeaves();
 
-    std::size_t pos = 0;
-    std::size_t inner_pos = 0;
-    for (int i = 0; i < leaves.size(); ++i, chunks_.Insert(set.begin(), set.end())) {
+    auto get_length = [&_cslp](const auto &_leaf) -> auto {
+      return _cslp.SpanLength(_leaf);
+    };
 
-      set.clear();
+    auto action = [this](auto &_set) {
+      covers_.Insert(_set.begin(), _set.end());
+    };
 
-      auto size = _cslp.SpanLength(leaves[i]);
-
-      if (inner_pos != 0) {
-        // Find inner variables
-        grammar::ComputeSpanCover(*this, inner_pos, inner_pos + size, back_inserter(set), cseq[pos]);
-
-        auto rest = SpanLength(cseq[pos]) - inner_pos;
-        if (rest <= size) {
-          // Get to the end of current variable's expansion
-          size -= rest;
-          ++pos;
-        } else {
-          // Still remain elements in the current variable's expansion
-          inner_pos += size;
-          continue;
-        }
-      }
-
-      std::size_t var_len;
-      while (pos < cseq.size() && (var_len = SpanLength(cseq[pos])) <= size) {
-        // Add complete covered variables
-        set.emplace_back(cseq[pos]);
-
-        size -= var_len;
-        ++pos;
-      }
-
-      if (0 < size) {
-        // Find inner variables
-        grammar::ComputeSpanCoverEnding(*this, size, back_inserter(set), cseq[pos]);
-      }
-
-      inner_pos = size;
-    }
+    ComputePartitionCover(*this, cseq, leaves, get_length, action, 0);
 
     _SampledSLP::operator=(_cslp);
   }
 
+  auto Cover(std::size_t _leaf) const {
+    return covers_[_leaf];
+  }
+
+  const auto &GetCovers() const {
+    return covers_;
+  }
+
+  template<typename __SLP, typename __SampledSLP, typename __Chunks>
+  bool operator==(const LightSLP<__SLP, __SampledSLP, __Chunks> &_lslp) const {
+    return _SLP::operator==(_lslp)
+        && _SampledSLP::operator==(_lslp)
+        && covers_ == _lslp.GetCovers();
+  }
+
+  template<typename __SLP, typename __SampledSLP, typename __Chunks>
+  bool operator!=(const LightSLP<__SLP, __SampledSLP, __Chunks> &_lslp) const {
+    return !(*this == _lslp);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+    std::size_t written_bytes = 0;
+    written_bytes += _SLP::serialize(out);
+    written_bytes += _SampledSLP::serialize(out);
+    written_bytes += sdsl::serialize(covers_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    _SLP::load(in);
+    _SampledSLP::load(in);
+    sdsl::load(covers_, in);
+  }
+
  protected:
-  _Chunks chunks_;
+  _Chunks covers_;
 };
 
 }
