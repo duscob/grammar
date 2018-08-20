@@ -290,6 +290,23 @@ class LightSLP : public _SLP, public _SampledSLP {
  public:
   using _SLP::size_type;
 
+  LightSLP() = default;
+
+  template<typename __SLP,
+      typename __SampledSLP,
+      typename __Chunks,
+      typename __SLPAct1 = NoAction,
+      typename __SLPAct2 = NoAction,
+      typename __ChunksAct1 = NoAction,
+      typename __ChunksAct2 = NoAction>
+  LightSLP(const LightSLP<__SLP, __SampledSLP, __Chunks> &_lslp,
+           __SLPAct1 &&_slp_act1 = NoAction(),
+           __SLPAct2 &&_slp_act2 = NoAction(),
+           __ChunksAct1 &&_chunks_act1 = NoAction(),
+           __ChunksAct2 &&_chunks_act2 = NoAction()): _SLP(_lslp, _slp_act1, _slp_act2),
+                                                      _SampledSLP(_lslp),
+                                                      covers_(_lslp.GetCovers(), _chunks_act1, _chunks_act2) {}
+
   template<typename _II, typename _Encoder, typename _CombinedSLP>
   void Compute(_II _first, _II _last, _Encoder _encoder, const _CombinedSLP &_cslp) {
     std::vector<typename _SLP::VariableType> cseq;
