@@ -14,6 +14,7 @@
 
 #include "slp_helper.h"
 #include "slp.h"
+#include "slp_metadata.h"
 
 
 namespace grammar {
@@ -248,6 +249,10 @@ class CombinedSLP : public _SLP, public _SampledSLP {
     return leaves_[_leaf - 1];
   }
 
+  const auto &GetLeaves() const {
+    return leaves_;
+  }
+
   bool operator==(const CombinedSLP &_combined_slp) const {
     return _SLP::operator==(_combined_slp)
         && _SampledSLP::operator==(_combined_slp)
@@ -275,6 +280,96 @@ class CombinedSLP : public _SLP, public _SampledSLP {
 
  protected:
   _LeavesContainer leaves_;
+};
+
+
+template<typename _SLP = grammar::SLP<>,
+    typename _SampledSLP = grammar::SampledSLP<>,
+    typename _Chunks = grammar::Chunks<>>
+class LightSLP : public _SLP, public _SampledSLP {
+ public:
+  using _SLP::size_type;
+
+  LightSLP() = default;
+
+  template<typename __SLP,
+      typename __SampledSLP,
+      typename __Chunks,
+      typename __SLPAct1 = NoAction,
+      typename __SLPAct2 = NoAction,
+      typename __ChunksAct1 = NoAction,
+      typename __ChunksAct2 = NoAction>
+  LightSLP(const LightSLP<__SLP, __SampledSLP, __Chunks> &_lslp,
+           __SLPAct1 &&_slp_act1 = NoAction(),
+           __SLPAct2 &&_slp_act2 = NoAction(),
+           __ChunksAct1 &&_chunks_act1 = NoAction(),
+           __ChunksAct2 &&_chunks_act2 = NoAction()): _SLP(_lslp, _slp_act1, _slp_act2),
+                                                      _SampledSLP(_lslp),
+                                                      covers_(_lslp.GetCovers(), _chunks_act1, _chunks_act2) {}
+
+  template<typename _II, typename _Encoder, typename _CombinedSLP>
+  void Compute(_II _first, _II _last, _Encoder _encoder, const _CombinedSLP &_cslp) {
+    std::vector<typename _SLP::VariableType> cseq;
+
+    auto report_cseq = [&cseq](auto v) {
+      cseq.emplace_back(v);
+    };
+
+    auto wrapper = BuildSLPWrapper(*this);
+    _encoder.Encode(_first, _last, wrapper, report_cseq);
+
+    const auto &leaves = _cslp.GetLeaves();
+
+    auto get_length = [&_cslp](const auto &_leaf) -> auto {
+      return _cslp.SpanLength(_leaf);
+    };
+
+    auto action = [this](auto &_set) {
+      covers_.Insert(_set.begin(), _set.end());
+    };
+
+    ComputePartitionCover(*this, cseq, leaves, get_length, action, 0);
+
+    _SampledSLP::operator=(_cslp);
+  }
+
+  auto Cover(std::size_t _leaf) const {
+    return covers_[_leaf];
+  }
+
+  const auto &GetCovers() const {
+    return covers_;
+  }
+
+  template<typename __SLP, typename __SampledSLP, typename __Chunks>
+  bool operator==(const LightSLP<__SLP, __SampledSLP, __Chunks> &_lslp) const {
+    return _SLP::operator==(_lslp)
+        && _SampledSLP::operator==(_lslp)
+        && covers_ == _lslp.GetCovers();
+  }
+
+  template<typename __SLP, typename __SampledSLP, typename __Chunks>
+  bool operator!=(const LightSLP<__SLP, __SampledSLP, __Chunks> &_lslp) const {
+    return !(*this == _lslp);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+    std::size_t written_bytes = 0;
+    written_bytes += _SLP::serialize(out);
+    written_bytes += _SampledSLP::serialize(out);
+    written_bytes += sdsl::serialize(covers_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    _SLP::load(in);
+    _SampledSLP::load(in);
+    sdsl::load(covers_, in);
+  }
+
+ protected:
+  _Chunks covers_;
 };
 
 }

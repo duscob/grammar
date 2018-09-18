@@ -54,22 +54,15 @@ void ComputeSLP(_II begin, _II end, _Encoder &&encoder, _SLP &slp, Args ...args)
 }
 
 
-template<typename _SLP, typename _OutputIterator>
-std::pair<std::size_t, std::size_t> ComputeSpanCover(const _SLP &slp,
-                                                     std::size_t begin,
-                                                     std::size_t end,
-                                                     _OutputIterator out) {
+template<typename _SLP, typename _OI>
+auto ComputeSpanCover(const _SLP &slp, std::size_t begin, std::size_t end, _OI out) {
   ComputeSpanCover(slp, begin, end, out, slp.Start());
-  return {begin, end};
+  return std::make_pair(begin, end);
 }
 
 
-template<typename _SLP, typename _OutputIterator>
-void ComputeSpanCover(const _SLP &slp,
-                      std::size_t begin,
-                      std::size_t end,
-                      _OutputIterator out,
-                      std::size_t curr_var) {
+template<typename _SLP, typename _OI>
+void ComputeSpanCover(const _SLP &slp, std::size_t begin, std::size_t end, _OI out, std::size_t curr_var) {
   if (begin >= end)
     return;
 
@@ -97,8 +90,8 @@ void ComputeSpanCover(const _SLP &slp,
 }
 
 
-template<typename _SLP, typename _OutputIterator>
-void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OutputIterator out, std::size_t curr_var) {
+template<typename _SLP, typename _OI>
+void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OI out, std::size_t curr_var) {
   if (begin == 0) {
     out = curr_var;
     ++out;
@@ -119,8 +112,8 @@ void ComputeSpanCoverBeginning(const _SLP &slp, std::size_t begin, _OutputIterat
 }
 
 
-template<typename _SLP, typename _OutputIterator>
-void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OutputIterator out, std::size_t curr_var) {
+template<typename _SLP, typename _OI>
+void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OI out, std::size_t curr_var) {
   if (slp.SpanLength(curr_var) <= end) {
     out = curr_var;
     ++out;
@@ -141,11 +134,9 @@ void ComputeSpanCoverEnding(const _SLP &slp, std::size_t end, _OutputIterator ou
 }
 
 
-template<typename _SLP, typename _OutputIterator>
-std::pair<std::size_t, std::size_t> ComputeSpanCoverFromBottom(const _SLP &slp,
-                                                               std::size_t begin,
-                                                               std::size_t end,
-                                                               _OutputIterator out) {
+template<typename _SLP, typename _OI>
+auto ComputeSpanCoverFromBottom(const _SLP &slp, std::size_t begin, std::size_t end, _OI out)
+-> std::pair<decltype(slp.Position(1)), decltype(slp.Position(1))> {
   auto l = slp.Leaf(begin);
   if (slp.Position(l) < begin) ++l;
 
@@ -168,21 +159,16 @@ std::pair<std::size_t, std::size_t> ComputeSpanCoverFromBottom(const _SLP &slp,
 }
 
 
-
-
-template<typename _SLP, typename _OutputIterator, typename _Action = NoAction>
-void ComputeSampledSLPLeaves(const _SLP &_slp,
-                             uint64_t _block_size,
-                             _OutputIterator _out,
-                             _Action &&_action = NoAction()) {
+template<typename _SLP, typename _OI, typename _Action = NoAction>
+void ComputeSampledSLPLeaves(const _SLP &_slp, uint64_t _block_size, _OI _out, _Action &&_action = NoAction()) {
   ComputeSampledSLPLeaves(_slp, _block_size, _out, _slp.Start(), _action);
 }
 
 
-template<typename _SLP, typename _OutputIterator, typename _Action = NoAction>
+template<typename _SLP, typename _OI, typename _Action = NoAction>
 void ComputeSampledSLPLeaves(const _SLP &_slp,
                              uint64_t _block_size,
-                             _OutputIterator _out,
+                             _OI _out,
                              std::size_t _curr_var,
                              _Action &&_action = NoAction()) {
   auto length = _slp.SpanLength(_curr_var);
@@ -294,6 +280,58 @@ class MustBeSampled {
   mutable std::unordered_map<std::size_t, bool> cache;
 };
 
-};
+
+template<typename _SLP, typename _CSeq, typename _Partition, typename _GetLength, typename _Action>
+void ComputePartitionCover(const _SLP &_slp,
+                           const _CSeq &_cseq,
+                           const _Partition &_partition,
+                           const _GetLength &_get_length,
+                           _Action _action,
+                           std::size_t initial_idx) {
+  std::vector<typename _SLP::VariableType> seq;
+
+  std::size_t pos = 0;
+  std::size_t inner_pos = 0;
+  for (auto i = initial_idx; i < _partition.size() + initial_idx; ++i, _action(seq)) {
+
+    seq.clear();
+
+    auto length = _get_length(_partition[i]);
+
+    if (inner_pos != 0) {
+      // Find inner variables
+      grammar::ComputeSpanCover(_slp, inner_pos, inner_pos + length, back_inserter(seq), _cseq[pos]);
+
+      auto rest = _slp.SpanLength(_cseq[pos]) - inner_pos;
+      if (rest <= length) {
+        // Get to the end of current variable's expansion
+        length -= rest;
+        ++pos;
+      } else {
+        // Still remain elements in the current variable's expansion
+        inner_pos += length;
+        continue;
+      }
+    }
+
+    std::size_t var_len;
+    while (pos < _cseq.size() && (var_len = _slp.SpanLength(_cseq[pos])) <= length) {
+      // Add complete covered variables
+      seq.emplace_back(_cseq[pos]);
+
+      length -= var_len;
+      ++pos;
+    }
+
+    if (0 < length) {
+      // Find inner variables
+      grammar::ComputeSpanCoverEnding(_slp, length, back_inserter(seq), _cseq[pos]);
+    }
+
+    inner_pos = length;
+  }
+}
+
+}
 
 #endif //GRAMMAR_CONSTRUCT_SLP_H

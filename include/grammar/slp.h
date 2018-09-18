@@ -21,29 +21,24 @@ namespace grammar {
  * This data structure represent, roughly, a Context-Free Grammar in Chomsky Normal Form, where all non-terminals
  * appears at left hand of a unique rule.
  */
-template<typename _VarsContainer = std::vector<uint32_t>, typename _LengthsContainer = std::vector<uint32_t>>
-class SLP {
+template<typename _VarsContainer = std::vector<uint32_t>>
+class BasicSLP {
  public:
   typedef std::size_t size_type;
   typedef typename _VarsContainer::value_type VariableType;
-  typedef typename _LengthsContainer::value_type LengthType;
 
   /**
    * Constructor
    *
    * @param sigma Size of alphabet == last symbol of alphabet
    */
-  SLP(VariableType sigma = 0) : sigma_(sigma) {}
+  BasicSLP(VariableType sigma = 0) : sigma_(sigma) {}
 
-  template<typename __VarsContainer, typename __LengthsContainer, typename _ActionVars = NoAction, typename _ActionLengths = NoAction>
-  SLP(const SLP<__VarsContainer, __LengthsContainer> &_slp,
-      _ActionVars &&_action_rules = NoAction(),
-      _ActionLengths &&_action_lengths = NoAction()) {
+  template<typename __VarsContainer, typename _ActionVars = NoAction, typename ..._Args>
+  BasicSLP(const BasicSLP<__VarsContainer> &_slp, _ActionVars &&_action_rules = NoAction(), _Args ..._args) {
     sigma_ = _slp.Sigma();
     Construct(rules_, _slp.GetRules());
     _action_rules(rules_);
-    Construct(lengths_, _slp.GetRulesLengths());
-    _action_lengths(lengths_);
   }
 
   /**
@@ -64,25 +59,10 @@ class SLP {
    *
    * @return id/index of the new rule
    */
-  template<typename __VariableType1, typename __VariableType2, typename __LengthType = LengthType>
-  auto AddRule(__VariableType1 left, __VariableType2 right, __LengthType span_length = 0)
-  -> typename std::enable_if<
-      std::integral_constant<
-          bool,
-          has_push_back<_VarsContainer, void(VariableType)>::value
-              && std::is_convertible<__VariableType1, VariableType>::value
-              && std::is_convertible<__VariableType2, VariableType>::value
-              && has_push_back<_LengthsContainer, void(LengthType)>::value
-              && std::is_convertible<__LengthType, LengthType>::value
-      >::value,
-      VariableType
-  >::type {
-    if (span_length == 0)
-      span_length = SpanLength(left) + SpanLength(right);
-
+  template<typename __VariableType1, typename __VariableType2, typename ..._Args>
+  VariableType AddRule(__VariableType1 left, __VariableType2 right, _Args ..._args) {
     rules_.push_back(left);
     rules_.push_back(right);
-    lengths_.push_back(span_length);
 
     return sigma_ + rules_.size() / 2;
   }
@@ -139,8 +119,7 @@ class SLP {
     if (IsTerminal(i))
       return {i};
 
-    std::vector<VariableType> span = {};
-    span.reserve(SpanLength(i));
+    std::vector<VariableType> span;
 
     Span(i, back_inserter(span));
     return span;
@@ -160,6 +139,117 @@ class SLP {
   }
 
   /**
+   * Reset
+   *
+   * @param sigma Size of alphabet == last symbol of alphabet
+   */
+  void Reset(VariableType sigma) {
+    sigma_ = sigma;
+    rules_.clear();
+  }
+
+  const _VarsContainer &GetRules() const {
+    return rules_;
+  }
+
+  template<typename __VarsContainer>
+  bool operator==(const BasicSLP<__VarsContainer> &_slp) const {
+    return sigma_ == _slp.sigma_
+        && rules_.size() == _slp.rules_.size()
+        && std::equal(rules_.begin(), rules_.end(), _slp.rules_.begin());
+  }
+
+  template<typename __VarsContainer>
+  bool operator!=(const BasicSLP<__VarsContainer> &_slp) const {
+    return !(*this == _slp);
+  }
+
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+    std::size_t written_bytes = 0;
+    written_bytes += sdsl::serialize(sigma_, out);
+    written_bytes += sdsl::serialize(rules_, out);
+
+    return written_bytes;
+  }
+
+  void load(std::istream &in) {
+    sdsl::load(sigma_, in);
+    sdsl::load(rules_, in);
+  }
+
+ protected:
+  VariableType sigma_ = 0;
+  _VarsContainer rules_;
+};
+
+
+/**
+ * Straight-Line Program
+ *
+ * This data structure represent, roughly, a Context-Free Grammar in Chomsky Normal Form, where all non-terminals
+ * appears at left hand of a unique rule.
+ */
+template<typename _VarsContainer = std::vector<uint32_t>, typename _LengthsContainer = std::vector<uint32_t>>
+class SLP : public BasicSLP<_VarsContainer> {
+ public:
+  typedef typename BasicSLP<_VarsContainer>::size_type size_type;
+  typedef typename BasicSLP<_VarsContainer>::VariableType VariableType;
+  typedef typename _LengthsContainer::value_type LengthType;
+
+  /**
+   * Constructor
+   *
+   * @param sigma Size of alphabet == last symbol of alphabet
+   */
+  SLP(VariableType sigma = 0) : BasicSLP<_VarsContainer>(sigma) {}
+
+  template<typename __VarsContainer, typename __LengthsContainer, typename _ActionVars = NoAction, typename _ActionLengths = NoAction>
+  SLP(const SLP<__VarsContainer, __LengthsContainer> &_slp,
+      _ActionVars &&_action_rules = NoAction(),
+      _ActionLengths &&_action_lengths = NoAction()): BasicSLP<_VarsContainer>(_slp, _action_rules) {
+    Construct(lengths_, _slp.GetRulesLengths());
+    _action_lengths(lengths_);
+  }
+
+  /**
+   * Add a new rule to SLP. left & right must be appear before (<= sigma + |rules|)
+   *
+   * @param left
+   * @param right
+   * @param span_length
+   *
+   * @return id/index of the new rule
+   */
+  template<typename __VariableType1, typename __VariableType2, typename __LengthType = LengthType>
+  VariableType AddRule(__VariableType1 left, __VariableType2 right, __LengthType span_length = 0) {
+    if (span_length == 0)
+      span_length = SpanLength(left) + SpanLength(right);
+
+    lengths_.push_back(span_length);
+    return BasicSLP<_VarsContainer>::AddRule(left, right);
+  }
+
+  /**
+   * Get span of rule i
+   *
+   * @param i
+   *
+   * @return sequence equal to span of rule i
+   */
+  std::vector<VariableType> Span(VariableType i) const {
+    if (BasicSLP<_VarsContainer>::IsTerminal(i))
+      return {i};
+
+    std::vector<VariableType> span = {};
+    span.reserve(SpanLength(i));
+
+    BasicSLP<_VarsContainer>::Span(i, back_inserter(span));
+    return span;
+  }
+
+  using BasicSLP<_VarsContainer>::Span;
+
+  /**
    * Get span length of rule i in terminal symbols.
    *
    * @param i
@@ -167,10 +257,10 @@ class SLP {
    * @return span length
    */
   LengthType SpanLength(VariableType i) const {
-    if (i <= sigma_)
+    if (BasicSLP<_VarsContainer>::IsTerminal(i))
       return 1;
 
-    return lengths_[i - sigma_ - 1];
+    return lengths_[i - BasicSLP<_VarsContainer>::Sigma() - 1];
   }
 
   /**
@@ -179,13 +269,8 @@ class SLP {
    * @param sigma Size of alphabet == last symbol of alphabet
    */
   void Reset(VariableType sigma) {
-    sigma_ = sigma;
-    rules_.clear();
+    BasicSLP<_VarsContainer>::Reset(sigma);
     lengths_.clear();
-  }
-
-  const _VarsContainer &GetRules() const {
-    return rules_;
   }
 
   const _LengthsContainer &GetRulesLengths() const {
@@ -194,9 +279,7 @@ class SLP {
 
   template<typename __VarsContainer, typename __LengthsContainer>
   bool operator==(const SLP<__VarsContainer, __LengthsContainer> &_slp) const {
-    return sigma_ == _slp.sigma_
-        && rules_.size() == _slp.rules_.size()
-        && std::equal(rules_.begin(), rules_.end(), _slp.rules_.begin())
+    return BasicSLP<_VarsContainer>::operator==(_slp)
         && lengths_.size() == _slp.lengths_.size()
         && std::equal(lengths_.begin(), lengths_.end(), _slp.lengths_.begin());
   }
@@ -208,22 +291,18 @@ class SLP {
 
   std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
     std::size_t written_bytes = 0;
-    written_bytes += sdsl::serialize(sigma_, out);
-    written_bytes += sdsl::serialize(rules_, out);
+    written_bytes += BasicSLP<_VarsContainer>::serialize(out);
     written_bytes += sdsl::serialize(lengths_, out);
 
     return written_bytes;
   }
 
   void load(std::istream &in) {
-    sdsl::load(sigma_, in);
-    sdsl::load(rules_, in);
+    BasicSLP<_VarsContainer>::load(in);
     sdsl::load(lengths_, in);
   }
 
  protected:
-  VariableType sigma_ = 0;
-  _VarsContainer rules_;
   _LengthsContainer lengths_;
 };
 

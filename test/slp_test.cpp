@@ -14,15 +14,15 @@
 #include "grammar/re_pair.h"
 
 
-TEST(SLP, AddRule_Failed) {
-  auto sigma = 4ul;
-
-  grammar::SLP<> slp(sigma);
-
+//TEST(SLP, AddRule_Failed) {
+//  auto sigma = 4ul;
+//
+//  grammar::SLP<> slp(sigma);
+//
 //  EXPECT_DEATH(slp.AddRule(1, sigma + 1), "");
-  EXPECT_EQ(slp.AddRule(1, 2), sigma + 1);
-  EXPECT_EQ(slp.AddRule(1, sigma + 1), sigma + 2);
-}
+//  EXPECT_EQ(slp.AddRule(1, 2), sigma + 1);
+//  EXPECT_EQ(slp.AddRule(1, sigma + 1), sigma + 2);
+//}
 
 
 using RightHand = std::pair<std::size_t, std::size_t>;
@@ -242,7 +242,8 @@ class SLPGenericConstruct_TF : public ::testing::Test {
 };
 
 
-using MyTypesConstruct = ::testing::Types<grammar::SLP<>,
+using MyTypesConstruct = ::testing::Types<grammar::BasicSLP<>,
+                                          grammar::SLP<>,
                                           grammar::SLPWithMetadata<grammar::PTS<>>,
                                           grammar::CombinedSLP<>>;
 TYPED_TEST_CASE(SLPGenericConstruct_TF, MyTypesConstruct);
