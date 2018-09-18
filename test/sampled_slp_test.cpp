@@ -158,7 +158,7 @@ TEST_P(SampledSLPNodes_TF, ComputeSampledSLPNodes) {
   grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(nodes), add_set);
 
   auto storing_factor = std::get<3>(GetParam());
-  grammar::MustBeSampled<grammar::Chunks<>> pred(spts, storing_factor);
+  grammar::MustBeSampled<grammar::Chunks<>> pred(grammar::AreChildrenTooBig<grammar::Chunks<>>(spts, storing_factor));
   grammar::ComputeSampledSLPNodes(slp_, block_size, nodes, pred, add_set);
 
   const auto &e_nodes = std::get<4>(GetParam());;
@@ -225,7 +225,7 @@ class SampledSLPMap_TF : public ::testing::TestWithParam<std::tuple<std::size_t,
 TEST_P(SampledSLPMap_TF, LeafAndPos) {
   grammar::Chunks<> pts;
   grammar::AddSet<grammar::Chunks<>> add_set(pts);
-  grammar::SampledSLP<> sslp(slp_, 4, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(pts, 2.5));
+  grammar::SampledSLP<> sslp(slp_, 4, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, 2.5)));
 
   const auto &pos = std::get<2>(GetParam());
 
@@ -258,7 +258,7 @@ TEST_P(SampledSLPMap_TF, CombinedSLPLeafAndPos) {
 
   grammar::Chunks<> pts;
   grammar::AddSet<grammar::Chunks<>> add_set(pts);
-  cslp.Compute(4, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(pts, 2.5));
+  cslp.Compute(4, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, 2.5)));
 
   const auto &pos = std::get<2>(GetParam());
 
@@ -325,7 +325,7 @@ TEST_P(SampledSLPParent_TF, FirstChildAndParent) {
   grammar::Chunks<> pts;
   grammar::AddSet<grammar::Chunks<>> add_set(pts);
   grammar::SampledSLP<>
-      sslp(slp_, block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
+      sslp(slp_, block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor)));
 
   const auto &pos = std::get<4>(GetParam());
   const auto &e_res = std::get<5>(GetParam());
@@ -356,7 +356,7 @@ TEST_P(SampledSLPParent_TF, CombinedSLPFirstChildAndParent) {
   {
     grammar::Chunks<> pts;
     grammar::AddSet<grammar::Chunks<>> add_set(pts);
-    cslp.Compute(block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
+    cslp.Compute(block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor)));
   }
 
   const auto &pos = std::get<4>(GetParam());
@@ -376,7 +376,7 @@ TEST_P(SampledSLPParent_TF, Serialization) {
   grammar::Chunks<> pts;
   grammar::AddSet<grammar::Chunks<>> add_set(pts);
   grammar::SampledSLP<>
-      sslp(slp_, block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
+      sslp(slp_, block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor)));
   {
     std::ofstream out("tmp.sampled_slp", std::ios::binary);
     sslp.serialize(out);
@@ -468,7 +468,7 @@ TEST_P(SLPSpanCoverFromBottom_TF, SpanCover) {
   grammar::Chunks<> pts;
   grammar::AddSet<grammar::Chunks<>> add_set(pts);
   grammar::SampledSLP<>
-      sslp(slp_, block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(pts, storing_factor));
+      sslp(slp_, block_size, add_set, add_set, grammar::MustBeSampled<grammar::Chunks<>>(grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor)));
 
   auto &span = std::get<4>(GetParam());
 

@@ -10,6 +10,7 @@
 #include <vector>
 #include <unordered_map>
 #include <algorithm>
+#include <functional>
 
 #include "utility.h"
 
@@ -200,16 +201,16 @@ void ComputeSampledSLPNodes(const _SLP &_slp,
 
 
 template<typename _SLP, typename _SLPValueType = uint32_t, typename _Predicate, typename _Action = NoAction>
-std::vector<std::pair<std::size_t, std::size_t>> ComputeSampledSLPNodes(const _SLP &_slp,
-                                                                        std::size_t _curr_var,
-                                                                        uint32_t _block_size,
-                                                                        std::vector<_SLPValueType> &_nodes,
-                                                                        std::size_t &_curr_leaf,
-                                                                        const _Predicate &_pred,
-                                                                        _Action &&_action = NoAction()) {
+std::vector<std::size_t> ComputeSampledSLPNodes(const _SLP &_slp,
+                                                std::size_t _curr_var,
+                                                uint32_t _block_size,
+                                                std::vector<_SLPValueType> &_nodes,
+                                                std::size_t &_curr_leaf,
+                                                const _Predicate &_pred,
+                                                _Action &&_action = NoAction()) {
   auto length = _slp.SpanLength(_curr_var);
   if (length <= _block_size) {
-    return {{_curr_leaf++, 1}};
+    return {_curr_leaf++};
   }
 
   const auto &children = _slp[_curr_var];
@@ -221,7 +222,7 @@ std::vector<std::pair<std::size_t, std::size_t>> ComputeSampledSLPNodes(const _S
     _nodes.emplace_back(_curr_var);
     auto new_node = _nodes.size() - 1;
     _action(_slp, _curr_var, _nodes, new_node, left_children, right_children);
-    return {{new_node, 1}};
+    return {new_node};
   } else {
     left_children.insert(left_children.end(), right_children.begin(), right_children.end());
     return left_children;
@@ -229,15 +230,95 @@ std::vector<std::pair<std::size_t, std::size_t>> ComputeSampledSLPNodes(const _S
 }
 
 
+template<typename _PTS>
+class AreChildrenTooBig {
+ public:
+  AreChildrenTooBig(const _PTS &_pts, float _storing_factor) : pts_(_pts), storing_factor_(_storing_factor) {}
+
+  template<typename _Set, typename _Children>
+  bool operator()(const _Set &_set, const _Children &_lchildren, const _Children &_rchildren) const {
+    auto Count = [this](const auto &ranges) -> auto {
+      std::size_t length = 0;
+      for (const auto &item : ranges) {
+        // Added sets ranges start in 1, not in 0.
+        length += pts_[item + 1].size();
+      }
+
+      return length;
+    };
+
+    auto expanded_length = Count(_lchildren) + Count(_rchildren);
+
+    return _set.size() * storing_factor_ < expanded_length;
+  }
+
+ protected:
+  const _PTS &pts_;
+  float storing_factor_;
+};
+
+
+class IsTooBig {
+ public:
+  IsTooBig(std::size_t _max_size) : max_size_(_max_size) {}
+
+  template<typename _Set, typename _Children>
+  bool operator()(const _Set &_set, const _Children &_lchildren, const _Children &_rchildren) const {
+    return max_size_ <= _set.size();
+  }
+
+ protected:
+  std::size_t max_size_;
+};
+
+
+template<typename _PTS>
+class IsEqual {
+ public:
+  IsEqual(const _PTS &_pts, uint32_t _min_num_children = 100) : pts_(_pts), min_num_children_(_min_num_children) {}
+
+  template<typename _Set, typename _Children>
+  bool operator()(const _Set &_set, const _Children &_lchildren, const _Children &_rchildren) const {
+    if (_lchildren.size() + _rchildren.size() < min_num_children_) {
+      return false;
+    }
+
+    auto size = _set.size();
+
+    auto equal_size = [&size, this](const auto &_item) {
+      return size == pts_[_item].size();
+    };
+
+    return std::any_of(_lchildren.begin(), _lchildren.end(), equal_size)
+        || std::any_of(_rchildren.begin(), _rchildren.end(), equal_size);
+  }
+
+ protected:
+  const _PTS &pts_;
+  uint32_t min_num_children_;
+};
+
+
 /**
  * Predicate Must Be Sampled
  *
  * @tparam _PTS Precomputed Terminal Set
  */
-template<typename _PTS>
+template<typename _PTS, typename _Set = std::vector<uint32_t>, typename _Children = std::vector<std::size_t>>
 class MustBeSampled {
  public:
-  MustBeSampled(const _PTS &_pts, float _storing_factor) : pts_(_pts), storing_factor_(_storing_factor) {}
+  template<typename _Pred, typename ..._Args>
+  MustBeSampled(const _Pred &_pred, const _Args &... _args) {
+    Init(_pred, _args...);
+  }
+
+  template<typename _Pred, typename ..._Args>
+  void Init(const _Pred &_pred, const _Args &... _args) {
+    preds_.push_back(_pred);
+    Init(_args...);
+  }
+
+  void Init() {}
 
   template<typename _SLP, typename _RangeContainer>
   bool operator()(const _SLP &_slp,
@@ -250,32 +331,24 @@ class MustBeSampled {
       return it->second;
     }
 
-    auto Count = [this](const auto &ranges) -> auto {
-      std::size_t length = 0;
-      for (const auto &range : ranges) {
-        for (int i = 0; i < range.second; ++i) {
-          // Added sets ranges start in 1, not in 0.
-          length += pts_[range.first + i + 1].size();
-        }
-      }
-
-      return length;
-    };
-
     auto set = _slp.Span(_curr_var);
     sort(set.begin(), set.end());
     set.erase(unique(set.begin(), set.end()), set.end());
 
-    auto expanded_length = Count(left_ranges) + Count(right_ranges);
+    bool must_be_sampled = false;
+    for (const auto &pred : preds_) {
+      if (pred(set, left_ranges, right_ranges)) {
+        must_be_sampled = true;
+        break;
+      }
+    }
 
-    auto must_be_sampled = set.size() * storing_factor_ < expanded_length;
     cache[_curr_var] = must_be_sampled;
     return must_be_sampled;
   }
 
  private:
-  const _PTS &pts_;
-  float storing_factor_;
+  std::vector<std::function<bool(const _Set &, const _Children &, const _Children &)>> preds_;
 
   mutable std::unordered_map<std::size_t, bool> cache;
 };

@@ -272,7 +272,7 @@ class SampledPTS {
     };
     ComputeSampledSLPLeaves(*slp_, _block_size, back_inserter(nodes), add_set);
 
-    grammar::MustBeSampled<decltype(pts_)> pred(pts_, _storing_factor);
+    grammar::MustBeSampled<decltype(pts_)> pred(grammar::AreChildrenTooBig<decltype(pts_)>(pts_, _storing_factor));
 
     auto build_inner_data = [&add_set, this](
         const _SLP &_slp,
