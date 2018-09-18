@@ -102,7 +102,7 @@ if (grammar_build_tests)
 
     cxx_test_with_flags_and_args(complete_tree_test "" "gtest;gtest_main;grammar" "" test/complete_tree_test.cpp)
 
-    cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;grammar" "" test/re_pair_test.cpp)
+    cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;gflags;grammar" "--datapath=${CMAKE_SOURCE_DIR}/test/data" test/re_pair_test.cpp)
 
     cxx_test_with_flags_and_args(slp_test "" "gtest;gtest_main;grammar" "" test/slp_test.cpp)
 
