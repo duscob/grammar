@@ -130,11 +130,11 @@ class SampledSLP {
       _node_action(_slp, _curr_var, _nodes, _new_node, _left_ranges, _right_ranges);
 
       tmp_b_f.emplace_back(0);
-      tmp_b_f[_left_ranges.front().first] = 1;
+      tmp_b_f[_left_ranges.front()] = 1;
 
       auto nn = _new_node - l;
-      tmp_f[_left_ranges.front().first] = nn;
-      auto last_child = _right_ranges.back().first + _right_ranges.back().second;
+      tmp_f[_left_ranges.front()] = nn;
+      auto last_child = _right_ranges.back() + 1;
       tmp_n[nn] = (last_child <= l) ? last_child : tmp_n[last_child - l - 1];
     };
 
@@ -192,7 +192,10 @@ class SampledSLP {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(l, out);
     written_bytes += b_l.serialize(out);
+    written_bytes += b_l_rank.serialize(out);
+    written_bytes += b_l_select.serialize(out);
     written_bytes += b_f.serialize(out);
+    written_bytes += b_f_rank.serialize(out);
     written_bytes += sdsl::serialize(f, out);
     written_bytes += sdsl::serialize(n, out);
 
@@ -203,11 +206,11 @@ class SampledSLP {
     sdsl::load(l, in);
 
     b_l.load(in);
-    b_l_rank = _BVLeafNodesMarksRank(&b_l);
-    b_l_select = _BVLeafNodesMarksSelect(&b_l);
+    b_l_rank.load(in, &b_l);
+    b_l_select.load(in, &b_l);
 
     b_f.load(in);
-    b_f_rank = _BVFirstChildrenRank(&b_f);
+    b_f_rank.load(in, &b_f);
 
     sdsl::load(f, in);
     sdsl::load(n, in);
