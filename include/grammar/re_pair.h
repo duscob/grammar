@@ -9,6 +9,7 @@
 #include <memory>
 #include <functional>
 #include <algorithm>
+#include <fstream>
 
 #include "algorithm.h"
 
@@ -16,6 +17,7 @@
 namespace grammar {
 
 class RePairBasicEncoder;
+
 
 template<bool kChomskyNormalForm>
 class RePairEncoder;
@@ -169,6 +171,106 @@ class RePairEncoder<true> : public RePairBasicEncoder {
     };
 
     RePairBasicEncoder::Encode(_begin, _end, _report_rule, handler);
+  }
+};
+
+
+template<bool kChomskyNormalForm>
+class RePairReader;
+
+
+class RePairBasicReader {
+ public:
+  template<typename ReportRule, typename HandleCSeq>
+  void Read(const std::string &_basename, ReportRule &_report_rule, HandleCSeq &_handle_c_seq) {
+    std::ifstream rules_file(_basename + ".R", std::ios::binary);
+    if (!rules_file)
+      throw std::invalid_argument("Invalid file \"" + _basename + ".R\"");
+
+    rules_file.read(reinterpret_cast<char *>(&sigma), sizeof(int));
+
+    _report_rule(sigma - 1);
+
+    int rule[2];
+    while (rules_file.read(reinterpret_cast<char *>(&rule[0]), sizeof(rule))) {
+      auto lrule = get_rule_span_length(rule[0]) + get_rule_span_length(rule[1]);
+
+      _report_rule(rule[0], rule[1], lrule);
+      rules_span_length_.push_back(lrule);
+      rules_height_.push_back(std::max(get_rule_height(rule[0]), get_rule_height(rule[1])) + 1);
+    }
+
+    std::ifstream cseq_file(_basename + ".C", std::ios::binary);
+
+    std::vector<int> cseq;
+    int symbol;
+    while (cseq_file.read(reinterpret_cast<char *>(&symbol), sizeof(int))) {
+      cseq.push_back(symbol);
+    }
+
+    _handle_c_seq(cseq.data(), cseq.size());
+
+    rules_span_length_.clear();
+    rules_height_.clear();
+  }
+
+ protected:
+  int sigma = 0;
+  std::vector<int> rules_span_length_;
+  std::vector<int> rules_height_;
+
+  int get_rule_span_length(int _rule) const;
+
+  int get_rule_height(int _rule) const;
+};
+
+
+template<>
+class RePairReader<false> : public RePairBasicReader {
+ public:
+  template<typename ReportRule, typename ReportCSeq>
+  void Read(const std::string &_basename, ReportRule &_report_rule, ReportCSeq &_report_c_seq) {
+    auto handler = [&_report_c_seq](int C[], std::size_t length) {
+      for (int i = 0; i < length; ++i) {
+        _report_c_seq(C[i]);
+      }
+    };
+
+    RePairBasicReader::Read(_basename, _report_rule, handler);
+  }
+};
+
+
+template<>
+class RePairReader<true> : public RePairBasicReader {
+ public:
+  template<typename ReportRule, typename CompleteTree = BalanceTreeByWeight>
+  void Read(const std::string &_basename,
+            ReportRule &_report_rule,
+            const CompleteTree &_complete = BalanceTreeByWeight()) {
+    auto handler = [&_complete, &_report_rule, this](int C[], std::size_t length) {
+      auto max = *std::max_element(C, C + length);
+
+      auto
+          report = [&C, &length, max, &_report_rule, this](int id, int id_left_child, int id_right_child, auto height) {
+        auto left = (id_left_child < length) ? C[id_left_child] : id_left_child - length + max + 1;
+        auto right = (id_right_child < length) ? C[id_right_child] : id_right_child - length + max + 1;
+
+        int rule_span_length = this->get_rule_span_length(left) + this->get_rule_span_length(right);
+
+        _report_rule(left, right, rule_span_length);
+        rules_span_length_.push_back(rule_span_length);
+        rules_height_.push_back(std::max(this->get_rule_height(left), this->get_rule_height(right)) + 1);
+      };
+
+      auto get_height = [this](int rule) -> auto {
+        return this->get_rule_height(rule);
+      };
+
+      _complete(C, C + length, report, get_height);
+    };
+
+    RePairBasicReader::Read(_basename, _report_rule, handler);
   }
 };
 
