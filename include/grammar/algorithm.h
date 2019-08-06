@@ -75,7 +75,7 @@ class BalanceTreeByWeight {
 
     auto id = length;
     // Add nodes of height 1
-    for (int i = 1; i < length; ++i) {
+    for (std::size_t i = 1; i < length; ++i) {
       Node &left = nodes[i - 1];
       Node &right = nodes[i];
 
@@ -89,7 +89,7 @@ class BalanceTreeByWeight {
     // Create heap
     std::make_heap(heap.begin(), heap.end(), _compare_nodes);
 
-    for (int j = 1; j < length; ++j) {
+    for (std::size_t j = 1; j < length; ++j) {
       Node node;
 
       // Extract lighter subtree
@@ -227,16 +227,6 @@ inline _OI SetUnion(_II1 __first1, _II1 __last1, _II2 __first2, _II2 __last2, _O
   }
 
   return std::copy(__first2, __last2, std::copy(__first1, __last1, __result));
-};
-
-
-template<typename _II, typename _Sets, typename _Result>
-void MergeSetsOneByOne(_II _first, _II _last, const _Sets &_sets, _Result &_result) {
-  auto default_set_union = [](auto _first1, auto _last1, auto _first2, auto _last2, auto _result) -> auto {
-    return std::set_union(_first1, _last1, _first2, _last2, _result);
-  };
-
-  MergeSetsOneByOne(_first, _last, _sets, _result, default_set_union);
 }
 
 
@@ -256,6 +246,16 @@ void MergeSetsOneByOne(_II _first, _II _last, const _Sets &_sets, _Result &_resu
 }
 
 
+template<typename _II, typename _Sets, typename _Result>
+void MergeSetsOneByOne(_II _first, _II _last, const _Sets &_sets, _Result &_result) {
+  auto default_set_union = [](auto _first1, auto _last1, auto _first2, auto _last2, auto _result) -> auto {
+    return std::set_union(_first1, _last1, _first2, _last2, _result);
+  };
+
+  MergeSetsOneByOne(_first, _last, _sets, _result, default_set_union);
+}
+
+
 class MergeSetsOneByOneFunctor {
  public:
   template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
@@ -267,16 +267,6 @@ class MergeSetsOneByOneFunctor {
     MergeSetsOneByOne(_first, _last, _sets, _result, _set_union);
   }
 };
-
-
-template<typename _II, typename _Sets, typename _Result>
-void MergeSetsBinaryTree(_II _first, _II _last, const _Sets &_sets, _Result &_result) {
-  auto default_set_union = [](auto _first1, auto _last1, auto _first2, auto _last2, auto _result) -> auto {
-    return std::set_union(_first1, _last1, _first2, _last2, _result);
-  };
-
-  MergeSetsBinaryTree(_first, _last, _sets, _result, default_set_union);
-}
 
 
 template<typename _II, typename _Sets, typename _Result, typename _SetUnion>
@@ -330,6 +320,16 @@ void MergeSetsBinaryTree(_II _first, _II _last, const _Sets &_sets, _Result &_re
   }
 
   _result.swap(part_results.front().second);
+}
+
+
+template<typename _II, typename _Sets, typename _Result>
+void MergeSetsBinaryTree(_II _first, _II _last, const _Sets &_sets, _Result &_result) {
+  auto default_set_union = [](auto _first1, auto _last1, auto _first2, auto _last2, auto _result) -> auto {
+    return std::set_union(_first1, _last1, _first2, _last2, _result);
+  };
+
+  MergeSetsBinaryTree(_first, _last, _sets, _result, default_set_union);
 }
 
 
