@@ -188,7 +188,7 @@ class SampledSLP {
     return !(*this == _sampled_slp);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, const std::string &name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(l, out);
     written_bytes += b_l.serialize(out);
@@ -233,7 +233,7 @@ template<typename _SLP = grammar::SLP<>,
     typename _LeavesContainer = std::vector<typename _SLP::VariableType>>
 class CombinedSLP : public _SLP, public _SampledSLP {
  public:
-  using _SLP::size_type;
+  using typename _SLP::size_type;
 
   CombinedSLP() = default;
 
@@ -266,7 +266,7 @@ class CombinedSLP : public _SLP, public _SampledSLP {
     return !(*this == _combined_slp);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, const std::string &name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += _SLP::serialize(out);
     written_bytes += _SampledSLP::serialize(out);
@@ -356,7 +356,7 @@ class LightSLP : public _SLP, public _SampledSLP {
     return !(*this == _lslp);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, const std::string &name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += _SLP::serialize(out);
     written_bytes += _SampledSLP::serialize(out);

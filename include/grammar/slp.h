@@ -34,8 +34,15 @@ class BasicSLP {
    */
   BasicSLP(VariableType sigma = 0) : sigma_(sigma) {}
 
+  template<typename __VarsContainer, typename _ActionVars = NoAction>
+  BasicSLP(const BasicSLP<__VarsContainer> &_slp, _ActionVars &&_action_rules = NoAction()) {
+    sigma_ = _slp.Sigma();
+    Construct(rules_, _slp.GetRules());
+    _action_rules(rules_);
+  }
+
   template<typename __VarsContainer, typename _ActionVars = NoAction, typename ..._Args>
-  BasicSLP(const BasicSLP<__VarsContainer> &_slp, _ActionVars &&_action_rules = NoAction(), _Args ..._args) {
+  BasicSLP(const BasicSLP<__VarsContainer> &_slp, _ActionVars &&_action_rules, _Args ..._args) {
     sigma_ = _slp.Sigma();
     Construct(rules_, _slp.GetRules());
     _action_rules(rules_);
@@ -164,7 +171,7 @@ class BasicSLP {
     return !(*this == _slp);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, const std::string &name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += sdsl::serialize(sigma_, out);
     written_bytes += sdsl::serialize(rules_, out);
@@ -289,7 +296,7 @@ class SLP : public BasicSLP<_VarsContainer> {
     return !(*this == _slp);
   }
 
-  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {
+  std::size_t serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, const std::string &name = "") const {
     std::size_t written_bytes = 0;
     written_bytes += BasicSLP<_VarsContainer>::serialize(out);
     written_bytes += sdsl::serialize(lengths_, out);
