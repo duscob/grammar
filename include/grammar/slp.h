@@ -41,7 +41,7 @@ class BasicSLP {
     _action_rules(rules_);
   }
 
-  template<typename __VarsContainer, typename _ActionVars = NoAction, typename ..._Args>
+  template<typename __VarsContainer, typename _ActionVars, typename ..._Args>
   BasicSLP(const BasicSLP<__VarsContainer> &_slp, _ActionVars &&_action_rules, _Args ..._args) {
     sigma_ = _slp.Sigma();
     Construct(rules_, _slp.GetRules());

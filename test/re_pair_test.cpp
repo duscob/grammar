@@ -76,17 +76,19 @@ TEST_P(RePairEncoderTF, encode) {
   std::vector<int> compact_seq;
   CompactSequenceWrapper report_cseq(compact_seq);
 
+  const auto &sequence = std::get<0>(GetParam());
+
   grammar::RePairEncoder<false> encoder;
 
-  encoder.Encode(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end(), report_non_terminals, report_cseq);
-  EXPECT_EQ(sigma, *std::max_element(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end()));
+  encoder.Encode(sequence.begin(), sequence.end(), report_non_terminals, report_cseq);
+  EXPECT_EQ(sigma, *std::max_element(sequence.begin(), sequence.end()));
   EXPECT_EQ(non_terminals, std::get<1>(GetParam()));
   EXPECT_EQ(compact_seq, std::get<2>(GetParam()));
 
   non_terminals.clear();
   compact_seq.clear();
-  encoder.Encode(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end(), report_non_terminals, report_cseq);
-  EXPECT_EQ(sigma, *std::max_element(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end()));
+  encoder.Encode(sequence.begin(), sequence.end(), report_non_terminals, report_cseq);
+  EXPECT_EQ(sigma, *std::max_element(sequence.begin(), sequence.end()));
   EXPECT_EQ(non_terminals, std::get<1>(GetParam()));
   EXPECT_EQ(compact_seq, std::get<2>(GetParam()));
 }
@@ -124,14 +126,16 @@ TEST_P(RePairEncoderInChomskyNFTF, encode) {
   std::vector<NonTerminal> non_terminals;
   NonTerminalWrapper report_non_terminals(sigma, non_terminals);
 
+  const auto &sequence = std::get<0>(GetParam());
+
   grammar::RePairEncoder<true> encoder;
-  encoder.Encode(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end(), report_non_terminals);
-  EXPECT_EQ(sigma, *std::max_element(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end()));
+  encoder.Encode(sequence.begin(), sequence.end(), report_non_terminals);
+  EXPECT_EQ(sigma, *std::max_element(sequence.begin(), sequence.end()));
   EXPECT_EQ(non_terminals, std::get<1>(GetParam()));
 
   non_terminals.clear();
-  encoder.Encode(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end(), report_non_terminals);
-  EXPECT_EQ(sigma, *std::max_element(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end()));
+  encoder.Encode(sequence.begin(), sequence.end(), report_non_terminals);
+  EXPECT_EQ(sigma, *std::max_element(sequence.begin(), sequence.end()));
   EXPECT_EQ(non_terminals, std::get<1>(GetParam()));
 }
 
@@ -140,9 +144,11 @@ TEST_P(RePairEncoderInChomskyNFTF, encode_slp) {
   grammar::SLP<> slp(0);
   auto report_rules = grammar::BuildSLPWrapper(slp);
 
+  const auto &sequence = std::get<0>(GetParam());
+
   grammar::RePairEncoder<true> encoder;
-  encoder.Encode(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end(), report_rules);
-  EXPECT_EQ(slp.Sigma(), *std::max_element(std::get<0>(GetParam()).begin(), std::get<0>(GetParam()).end()));
+  encoder.Encode(sequence.begin(), sequence.end(), report_rules);
+  EXPECT_EQ(slp.Sigma(), *std::max_element(sequence.begin(), sequence.end()));
 
   auto &rules = std::get<1>(GetParam());
   for (int i = 0; i < rules.size(); ++i) {
