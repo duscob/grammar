@@ -291,7 +291,7 @@ template<typename _SLP = grammar::SLP<>,
     typename _Chunks = grammar::Chunks<>>
 class LightSLP : public _SLP, public _SampledSLP {
  public:
-  using _SLP::size_type;
+  using typename _SLP::size_type;
 
   LightSLP() = default;
 
