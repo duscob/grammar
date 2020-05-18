@@ -3,6 +3,8 @@
 
 option(grammar_build_tests "Build all of grammar's tests." ON)
 
+option(grammar_build_tools "Build all of grammar's tools." ON)
+
 option(grammar_build_benchmarks "Build all of grammar's benchmarks." ON)
 
 option(grammar_install "Enable installation of grammar. (Projects embedding grammar may want to turn this OFF.)" ON)
@@ -27,7 +29,7 @@ include(ConfigSafeGuards)
 
 
 # Global Setup
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 
 # Set common include folder for module
@@ -57,7 +59,8 @@ set(SOURCE_FILES include/grammar/re_pair.h
         include/grammar/slp_interface.h
         include/grammar/slp_helper.h
         include/grammar/sampled_slp.h
-        include/grammar/io.h)
+        include/grammar/io.h
+        include/grammar/differential_slp.h)
 
 add_library(grammar ${SOURCE_FILES})
 
@@ -114,10 +117,20 @@ if (grammar_build_tests)
 endif ()
 
 
+find_package(Boost COMPONENTS filesystem system REQUIRED)
+
+if (grammar_build_tools)
+    cxx_executable_with_flags(build_dslp_span_sums "" "gflags;grammar;${Boost_LIBRARIES}" tool/build_dslp_span_sums.cpp)
+
+    cxx_executable_with_flags(build_dslp_samples "" "gflags;grammar;${Boost_LIBRARIES}" tool/build_dslp_samples.cpp)
+endif ()
+
+
 if (grammar_build_benchmarks)
     include(ConfigGBenchmark)
 
     find_package(Boost COMPONENTS filesystem system REQUIRED)
 
     cxx_executable_with_flags(chunks_bm "" "gflags;benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
+    cxx_executable_with_flags(differential_slp_bm "" "gflags;benchmark;grammar;${Boost_LIBRARIES}" benchmark/differential_slp_bm.cpp)
 endif ()
