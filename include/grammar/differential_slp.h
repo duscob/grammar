@@ -210,17 +210,25 @@ auto MakeDifferentialSLPWrapper(std::size_t _seq_size,
                                 const BitVector &_samples_pos,
                                 const BitVectorRank &_samples_pos_rank,
                                 const BitVectorSelect &_samples_pos_select) {
-  return DifferentialSLPWrapper(_seq_size,
-                                _slp,
-                                _roots,
-                                _diff_base_seq,
-                                _span_sums,
-                                _diff_base_sums,
-                                _samples,
-                                _sample_roots_pos,
-                                _samples_pos,
-                                _samples_pos_rank,
-                                _samples_pos_select);
+  return DifferentialSLPWrapper<SLP,
+                                Roots,
+                                SpanSums,
+                                Samples,
+                                SampleRootsPos,
+                                BitVector,
+                                BitVectorRank,
+                                BitVectorSelect>(
+      _seq_size,
+      _slp,
+      _roots,
+      _diff_base_seq,
+      _span_sums,
+      _diff_base_sums,
+      _samples,
+      _sample_roots_pos,
+      _samples_pos,
+      _samples_pos_rank,
+      _samples_pos_select);
 }
 
 /*
