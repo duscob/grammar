@@ -93,15 +93,15 @@ int main(int argc, char **argv) {
   sdsl::int_vector<> samples;
   grammar::Construct(samples, tmp_samples);
   sdsl::util::bit_compress(samples);
-  sdsl::store_to_cache(samples, KEY_GRM_SAMPLE_VALUES + ("_" + std::to_string(FLAGS_max_size)), config);
+  sdsl::store_to_cache(samples, KEY_GRM_SAMPLE_VALUES /*+ ("_" + std::to_string(FLAGS_max_size))*/, config);
 
   sdsl::int_vector<> sample_roots_pos;
   grammar::Construct(sample_roots_pos, tmp_sample_roots_pos);
   sdsl::util::bit_compress(sample_roots_pos);
-  sdsl::store_to_cache(sample_roots_pos, KEY_GRM_SAMPLE_ROOTS_POSITIONS + ("_" + std::to_string(FLAGS_max_size)), config);
+  sdsl::store_to_cache(sample_roots_pos, KEY_GRM_SAMPLE_ROOTS_POSITIONS /*+ ("_" + std::to_string(FLAGS_max_size))*/, config);
 
   sdsl::sd_vector<> sample_pos(tmp_sample_pos);
-  sdsl::store_to_cache(sample_pos, KEY_GRM_SAMPLE_POSITIONS + ("_" + std::to_string(FLAGS_max_size)), config);
+  sdsl::store_to_cache(sample_pos, KEY_GRM_SAMPLE_POSITIONS /*+ ("_" + std::to_string(FLAGS_max_size))*/, config);
 
   return 0;
 }

@@ -33,7 +33,10 @@ set(CMAKE_CXX_STANDARD 14)
 
 
 # Set common include folder for module
-set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/include)
+set(COMMON_INCLUDES
+        ${PROJECT_SOURCE_DIR}/include
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_PREFIX_PATH}/include)
 
 include_directories(${COMMON_INCLUDES})
 
@@ -62,9 +65,13 @@ set(SOURCE_FILES include/grammar/re_pair.h
         include/grammar/io.h
         include/grammar/differential_slp.h)
 
-add_library(grammar ${SOURCE_FILES})
+find_library(SDSL_LIB sdsl)
+find_library(DIVSUFSORT_LIB divsufsort)
+find_library(DIVSUFSORT64_LIB divsufsort64)
 
-set(LIBS sdsl)
+set(LIBS ${SDSL_LIB} ${DIVSUFSORT_LIB} ${DIVSUFSORT64_LIB})
+
+add_library(grammar ${SOURCE_FILES})
 target_link_libraries(grammar ${LIBS})
 
 
@@ -77,9 +84,9 @@ if (grammar_install)
         set(CMAKE_INSTALL_LIBDIR "lib${LIB_SUFFIX}" CACHE STRING "Object code libraries (lib)")
         set(CMAKE_INSTALL_INCLUDEDIR "include" CACHE STRING "C header files (include)")
         mark_as_advanced(CMAKE_INSTALL_BINDIR CMAKE_INSTALL_LIBDIR CMAKE_INSTALL_INCLUDEDIR)
-    else()
+    else ()
         include(GNUInstallDirs)
-    endif()
+    endif ()
 
     install(TARGETS grammar
             RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
@@ -111,7 +118,7 @@ if (grammar_build_tests)
 
     cxx_test_with_flags_and_args(merge_sets_test "" "gtest;gtest_main;grammar" "" test/merge_sets_test.cpp)
 
-    cxx_test_with_flags_and_args(slp_metadata_test "" "gtest;gtest_main;grammar;sdsl" "" test/slp_metadata_test.cpp)
+    cxx_test_with_flags_and_args(slp_metadata_test "" "gtest;gtest_main;grammar;${LIBS}" "" test/slp_metadata_test.cpp)
 
     cxx_test_with_flags_and_args(sampled_slp_test "" "gtest;gtest_main;grammar" "" test/sampled_slp_test.cpp)
 endif ()
@@ -120,9 +127,9 @@ endif ()
 find_package(Boost COMPONENTS filesystem system REQUIRED)
 
 if (grammar_build_tools)
-    cxx_executable_with_flags(build_dslp_span_sums "" "gflags;grammar;${Boost_LIBRARIES}" tool/build_dslp_span_sums.cpp)
+    cxx_executable_with_flags(build_dslp_span_sums "" "gflags;grammar;${LIBS};${Boost_LIBRARIES};" tool/build_dslp_span_sums.cpp)
 
-    cxx_executable_with_flags(build_dslp_samples "" "gflags;grammar;${Boost_LIBRARIES}" tool/build_dslp_samples.cpp)
+    cxx_executable_with_flags(build_dslp_samples "" "gflags;grammar;${LIBS};${Boost_LIBRARIES}" tool/build_dslp_samples.cpp)
 endif ()
 
 

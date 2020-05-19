@@ -223,9 +223,9 @@ int main(int argc, char *argv[]) {
                                config)
       ->RangeMultiplier(2)->Range(1, 1 << 12);
 
-  sdsl::int_vector<> sa;
-  sdsl::load_from_file(sa, (datafile.parent_path() / "sa_data.sdsl").string());
-  benchmark::RegisterBenchmark("BM_Access", BM_Access, sa, positions);
+//  sdsl::int_vector<> sa;
+//  sdsl::load_from_file(sa, (datafile.parent_path() / "sa_data.sdsl").string());
+//  benchmark::RegisterBenchmark("BM_Access", BM_Access, sa, positions);
 
   benchmark::Initialize(&argc, argv);
   benchmark::RunSpecifiedBenchmarks();
