@@ -105,6 +105,7 @@ endif ()
 include(cmake/internal_utils.cmake)
 
 find_library(GFLAGS_LIB gflags)
+find_package(Threads)
 
 if (grammar_build_tests)
     enable_testing()
@@ -128,9 +129,9 @@ endif ()
 find_package(Boost COMPONENTS filesystem system REQUIRED)
 
 if (grammar_build_tools)
-    cxx_executable_with_flags(build_dslp_span_sums "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES};" tool/build_dslp_span_sums.cpp)
+    cxx_executable_with_flags(build_dslp_span_sums "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_span_sums.cpp)
 
-    cxx_executable_with_flags(build_dslp_samples "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES}" tool/build_dslp_samples.cpp)
+    cxx_executable_with_flags(build_dslp_samples "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_samples.cpp)
 endif ()
 
 
@@ -140,5 +141,6 @@ if (grammar_build_benchmarks)
     find_package(Boost COMPONENTS filesystem system REQUIRED)
 
     cxx_executable_with_flags(chunks_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
-    cxx_executable_with_flags(differential_slp_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES}" benchmark/differential_slp_bm.cpp)
+
+    cxx_executable_with_flags(differential_slp_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" benchmark/differential_slp_bm.cpp)
 endif ()
