@@ -104,6 +104,8 @@ endif ()
 # Define helper functions and macros used.
 include(cmake/internal_utils.cmake)
 
+find_library(GFLAGS_LIB gflags)
+find_package(Threads)
 
 if (grammar_build_tests)
     enable_testing()
@@ -112,7 +114,7 @@ if (grammar_build_tests)
 
     cxx_test_with_flags_and_args(complete_tree_test "" "gtest;gtest_main;grammar" "" test/complete_tree_test.cpp)
 
-    cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;gflags;grammar" "--datapath=${CMAKE_SOURCE_DIR}/test/data" test/re_pair_test.cpp)
+    cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;${GFLAGS_LIB};grammar" "--datapath=${CMAKE_SOURCE_DIR}/test/data" test/re_pair_test.cpp)
 
     cxx_test_with_flags_and_args(slp_test "" "gtest;gtest_main;grammar" "" test/slp_test.cpp)
 
@@ -127,9 +129,9 @@ endif ()
 find_package(Boost COMPONENTS filesystem system REQUIRED)
 
 if (grammar_build_tools)
-    cxx_executable_with_flags(build_dslp_span_sums "" "gflags;grammar;${LIBS};${Boost_LIBRARIES};" tool/build_dslp_span_sums.cpp)
+    cxx_executable_with_flags(build_dslp_span_sums "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_span_sums.cpp)
 
-    cxx_executable_with_flags(build_dslp_samples "" "gflags;grammar;${LIBS};${Boost_LIBRARIES}" tool/build_dslp_samples.cpp)
+    cxx_executable_with_flags(build_dslp_samples "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_samples.cpp)
 endif ()
 
 
@@ -138,6 +140,7 @@ if (grammar_build_benchmarks)
 
     find_package(Boost COMPONENTS filesystem system REQUIRED)
 
-    cxx_executable_with_flags(chunks_bm "" "gflags;benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
-    cxx_executable_with_flags(differential_slp_bm "" "gflags;benchmark;grammar;${Boost_LIBRARIES}" benchmark/differential_slp_bm.cpp)
+    cxx_executable_with_flags(chunks_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
+
+    cxx_executable_with_flags(differential_slp_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" benchmark/differential_slp_bm.cpp)
 endif ()
