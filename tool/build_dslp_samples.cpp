@@ -54,12 +54,12 @@ int main(int argc, char **argv) {
     }
 
     std::size_t seq_size;
-    uint32_t diff_base_seq;
+    uint64_t diff_base_seq;
     {
       std::ifstream in(datafile.string() + ".info");
       in >> seq_size;
 
-      int32_t minimal;
+      int64_t minimal;
       in >> minimal;
       diff_base_seq = minimal < 0 ? std::abs(minimal) : 0;
     }
@@ -67,10 +67,10 @@ int main(int argc, char **argv) {
     sdsl::int_vector<> span_sums(slp.GetRules().size());
     sdsl::load_from_cache(span_sums, KEY_GRM_SPAN_SUMS, config);
 
-    uint32_t diff_base_sums;
+    uint64_t diff_base_sums;
     {
       std::ifstream in(cache_file_name(KEY_GRM_SPAN_SUMS, config) + ".info");
-      int32_t minimal;
+      int64_t minimal;
       in >> minimal;
       diff_base_sums = minimal < 0 ? std::abs(minimal) : 0;
     }
