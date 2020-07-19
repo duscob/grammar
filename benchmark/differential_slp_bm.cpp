@@ -22,6 +22,13 @@
 
 DEFINE_string(data, "", "Data file. (MANDATORY)");
 
+// Benchmark Warm-up
+static void BM_WarmUp(benchmark::State &state) {
+  for (auto _ : state)
+    std::string empty_string;
+}
+BENCHMARK(BM_WarmUp);
+
 auto BM_Access = [](benchmark::State &_state, const auto &_seq, const auto &_positions) {
   std::vector<std::size_t> values;
   values.reserve(_positions.size());

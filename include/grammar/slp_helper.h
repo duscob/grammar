@@ -405,6 +405,65 @@ void ComputePartitionCover(const _SLP &_slp,
   }
 }
 
+
+template<typename _Tree, typename _Report>
+auto ComputeCoverFromBottom(const _Tree &_tree, std::size_t _bp, std::size_t _ep, _Report _report)
+-> std::pair<decltype(_tree.Position(1)), decltype(_tree.Position(1))> {
+  auto l = _tree.Leaf(_bp);
+  if (_tree.Position(l) < _bp) ++l;
+
+  auto r = _tree.Leaf(_ep) - 1;
+
+  for (auto i = l, next = i + 1; i <= r; i = next, ++next) {
+    while (_tree.IsFirstChild(i)) {
+      auto p = _tree.Parent(i);
+      if (p.second > r + 1)
+        break;
+      i = p.first;
+      next = p.second;
+    }
+
+    _report(i);
+  }
+
+  return std::make_pair(_tree.Position(l), _tree.Position(r + 1));
+}
+
+
+template<typename _Tree>
+class ComputeCoverBottomFunctor {
+ public:
+  explicit ComputeCoverBottomFunctor(const _Tree &_tree) : tree_(_tree) {}
+
+  auto Compute(std::size_t _bp, std::size_t _ep) const {
+    std::vector<std::size_t> nodes;
+
+    auto report = [&nodes](const auto &_value) { nodes.emplace_back(_value); };
+
+    auto range = ComputeCoverFromBottom(tree_, _bp, _ep, report);
+
+    return std::make_pair(std::move(range), std::move(nodes));
+  }
+
+  auto operator()(std::size_t _sp, std::size_t _ep) const {
+    return Compute(_sp, _ep);
+  }
+
+ protected:
+  const _Tree &tree_;
+};
+
+
+template<typename _Tree>
+auto BuildComputeCoverBottomFunctor(const _Tree &_tree) {
+  return ComputeCoverBottomFunctor<_Tree>(_tree);
+}
+
+template<typename _Tree>
+auto BuildPtrComputeCoverBottomFunctor(const _Tree &_tree) {
+  return new ComputeCoverBottomFunctor<_Tree>(_tree);
+}
+
 }
 
 #endif //GRAMMAR_CONSTRUCT_SLP_H

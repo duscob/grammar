@@ -237,6 +237,8 @@ class CombinedSLP : public _SLP, public _SampledSLP {
 
   CombinedSLP() = default;
 
+  CombinedSLP(const _SLP &_slp) : _SLP(_slp) {}
+
   template<typename _LeafAction, typename _NodeAction, typename _Predicate>
   void Compute(uint32_t _block_size, _LeafAction &&_leaf_action, _NodeAction &&_node_action, const _Predicate &_pred) {
     auto leaf_action = [this, &_leaf_action](const auto &_slp, auto _curr_var) {
@@ -332,6 +334,25 @@ class LightSLP : public _SLP, public _SampledSLP {
     };
 
     ComputePartitionCover(*this, cseq, leaves, get_length, action, 0);
+
+    _SampledSLP::operator=(_cslp);
+  }
+
+  template<typename _CSeq, typename _CombinedSLP>
+  void Compute(const _SLP &_slp, const _CSeq &_cseq, const _CombinedSLP &_cslp) {
+    _SLP::operator=(_slp);
+
+    const auto &leaves = _cslp.GetLeaves();
+
+    auto get_length = [&_cslp](const auto &_leaf) -> auto {
+      return _cslp.SpanLength(_leaf);
+    };
+
+    auto action = [this](auto &_set) {
+      covers_.Insert(_set.begin(), _set.end());
+    };
+
+    ComputePartitionCover(*this, _cseq, leaves, get_length, action, 0);
 
     _SampledSLP::operator=(_cslp);
   }
