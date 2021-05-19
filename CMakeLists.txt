@@ -62,6 +62,7 @@ set(SOURCE_FILES include/grammar/re_pair.h
         include/grammar/slp_interface.h
         include/grammar/slp_helper.h
         include/grammar/sampled_slp.h
+        include/grammar/slp_compact.h
         include/grammar/io.h
         include/grammar/differential_slp.h)
 
@@ -123,6 +124,8 @@ if (grammar_build_tests)
     cxx_test_with_flags_and_args(slp_metadata_test "" "gtest;gtest_main;grammar;${LIBS}" "" test/slp_metadata_test.cpp)
 
     cxx_test_with_flags_and_args(sampled_slp_test "" "gtest;gtest_main;grammar" "" test/sampled_slp_test.cpp)
+
+    cxx_test_with_flags_and_args(slp_compact_test "" "gtest;gtest_main;${LIBS};grammar" "" test/slp_compact_test.cpp)
 endif ()
 
 
