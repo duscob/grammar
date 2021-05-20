@@ -286,3 +286,73 @@ INSTANTIATE_TEST_SUITE_P(
             std::vector<size_t>{2})
     )
 );
+
+class ExpandPartialCompactSLPFromBack_TF : public ExpandPartialCompactSLP_TF {};
+
+TEST_P(ExpandPartialCompactSLPFromBack_TF, ExpandCompactSLPFromBack) {
+  const auto &sigma = std::get<0>(GetParam());
+  const auto &tree = std::get<1>(GetParam());
+  auto rank_leaf = sdsl::bit_vector::rank_0_type(&tree);
+  const auto &leaves = std::get<2>(GetParam());
+  const auto &var = std::get<3>(GetParam());
+  const auto &len = std::get<4>(GetParam());
+
+  std::vector<size_t> expansion;
+  auto report = [&expansion](auto tt_term) {
+    expansion.emplace_back(tt_term);
+  };
+
+  grammar::ExpandCompactSLPFromBack(var, len, sigma, tree, rank_leaf, leaves, report);
+
+  const auto &e_expansion = std::get<5>(GetParam());
+  ASSERT_EQ(e_expansion, expansion);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CompactSLP,
+    ExpandPartialCompactSLPFromBack_TF,
+    ::testing::Values(
+        std::make_tuple(
+            3,
+            sdsl::bit_vector{1, 1, 1, 0, 0, 0, 0},
+            std::vector<size_t>{1, 2, 3, 6},
+            4,
+            5,
+            std::vector<size_t>{2, 1, 3, 2, 1}),
+        std::make_tuple(
+            3,
+            sdsl::bit_vector{1, 1, 1, 0, 0, 0, 0},
+            std::vector<size_t>{1, 2, 3, 6},
+            4,
+            10,
+            std::vector<size_t>{2, 1, 3, 2, 1}),
+        std::make_tuple(
+            3,
+            sdsl::bit_vector{1, 1, 1, 0, 0, 0, 0},
+            std::vector<size_t>{1, 2, 3, 6},
+            4,
+            2,
+            std::vector<size_t>{2, 1}),
+        std::make_tuple(
+            3,
+            sdsl::bit_vector{1, 1, 1, 0, 0, 0, 0},
+            std::vector<size_t>{1, 2, 3, 6},
+            4,
+            0,
+            std::vector<size_t>{}),
+        std::make_tuple(
+            3,
+            sdsl::bit_vector{1, 1, 1, 0, 0, 0, 0},
+            std::vector<size_t>{2, 3, 1, 3},
+            3,
+            1,
+            std::vector<size_t>{3}),
+        std::make_tuple(
+            3,
+            sdsl::bit_vector{1, 1, 1, 0, 0, 0, 0},
+            std::vector<size_t>{2, 3, 1, 3},
+            7,
+            5,
+            std::vector<size_t>{2})
+    )
+);

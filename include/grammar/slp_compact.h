@@ -111,16 +111,16 @@ auto CreateCompactGrammarTreeWithBP(const TRoots &t_roots, const TSigma &t_sigma
   return std::make_tuple(std::move(tree), std::move(leaves), std::move(nt_id));
 }
 
-template<typename TNode, typename TState, typename TIsTerminal, typename TGetNextLeaf, typename TIsTreeComplete, typename TReport>
-void ExpandInternalNodeCompactSLPFromFront(const TNode &t_root,
-                                           std::size_t &t_length,
-                                           TState t_state,
-                                           TIsTerminal &t_is_terminal,
-                                           TGetNextLeaf &&t_get_next_leaf,
-                                           TIsTreeComplete &t_is_tree_complete,
-                                           TReport &t_report) {
-  auto node = t_root;
-  auto state = t_state;
+template<typename TNode, typename TState, typename TIsTerminal, typename TGetFirstNode, typename TGetNextLeaf, typename TIsTreeComplete, typename TReport>
+void ExpandInternalNodeCompactSLP(const TNode &t_root,
+                                  std::size_t &t_length,
+                                  TState t_state,
+                                  TIsTerminal &t_is_terminal,
+                                  TGetFirstNode &t_get_first_node,
+                                  TGetNextLeaf &t_get_next_leaf,
+                                  TIsTreeComplete &t_is_tree_complete,
+                                  TReport &t_report) {
+  auto[node, state] = t_get_first_node(t_root, t_state);
   std::remove_reference_t<decltype(std::get<1>(t_get_next_leaf(node, state)))> var;
 
   do {
@@ -130,20 +130,22 @@ void ExpandInternalNodeCompactSLPFromFront(const TNode &t_root,
       t_report(var);
       --t_length;
     } else {
-      ExpandInternalNodeCompactSLPFromFront(
-          var, t_length, TState(), t_is_terminal, t_get_next_leaf, t_is_tree_complete, t_report);
+      ExpandInternalNodeCompactSLP(
+          var, t_length, TState(), t_is_terminal, t_get_first_node, t_get_next_leaf, t_is_tree_complete, t_report);
     }
   } while (!t_is_tree_complete(state) && t_length > 0);
 }
 
-template<typename TNode, typename TTree, typename TLeafRank, typename TLeaves, typename TReport>
-void ExpandCompactSLPFromFront(const TNode &t_root,
-                               std::size_t t_length,
-                               std::size_t t_sigma,
-                               const TTree &t_tree,
-                               const TLeafRank &t_leaf_rank,
-                               const TLeaves &t_leaves,
-                               TReport &t_report) {
+template<typename TNode, typename TGetFirstNode, typename TTree, typename TLeafRank, typename TLeaves, typename TReport>
+void ExpandCompactSLP(const TNode &t_root,
+                      TGetFirstNode &t_get_first_node,
+                      bool t_forward,
+                      std::size_t t_length,
+                      std::size_t t_sigma,
+                      const TTree &t_tree,
+                      const TLeafRank &t_leaf_rank,
+                      const TLeaves &t_leaves,
+                      TReport &t_report) {
   if (t_length == 0) return;
 
   auto is_terminal = [&t_sigma](auto tt_var) {
@@ -164,10 +166,10 @@ void ExpandCompactSLPFromFront(const TNode &t_root,
     int leaf_pos = 0;
   } state;
 
-  auto get_next_leaf = [&t_sigma, &t_tree, &t_leaf_rank, &t_leaves](auto tt_node, auto tt_state) {
+  auto get_next_leaf = [&t_forward, &t_sigma, &t_tree, &t_leaf_rank, &t_leaves](auto tt_node, auto tt_state) {
     tt_node -= (t_sigma + 1);
 
-    while (t_tree[++tt_node] == 1) {
+    while (t_tree[(t_forward ? ++tt_node : --tt_node)] == 1) {
       ++tt_state.excess;
     }
 
@@ -176,7 +178,7 @@ void ExpandCompactSLPFromFront(const TNode &t_root,
       tt_state.first_leaf_found = true;
       tt_state.leaf_pos = t_leaf_rank(tt_node);
     } else {
-      ++tt_state.leaf_pos;
+      t_forward ? ++tt_state.leaf_pos : --tt_state.leaf_pos;
     }
 
     return std::make_tuple(tt_node + t_sigma + 1, t_leaves[tt_state.leaf_pos], tt_state);
@@ -186,8 +188,50 @@ void ExpandCompactSLPFromFront(const TNode &t_root,
     return tt_state.excess == 0;
   };
 
-  ExpandInternalNodeCompactSLPFromFront(
-      t_root, t_length, state, is_terminal, get_next_leaf, is_tree_complete, t_report);
+  ExpandInternalNodeCompactSLP(
+      t_root, t_length, state, is_terminal, t_get_first_node, get_next_leaf, is_tree_complete, t_report);
+}
+
+template<typename TNode, typename TTree, typename TLeafRank, typename TLeaves, typename TReport>
+void ExpandCompactSLPFromFront(const TNode &t_root,
+                               std::size_t t_length,
+                               std::size_t t_sigma,
+                               const TTree &t_tree,
+                               const TLeafRank &t_leaf_rank,
+                               const TLeaves &t_leaves,
+                               TReport &t_report) {
+  auto get_first_node = [](auto tt_root, auto tt_state) {
+    return std::make_pair(tt_root, tt_state);
+  };
+
+  ExpandCompactSLP(t_root, get_first_node, true, t_length, t_sigma, t_tree, t_leaf_rank, t_leaves, t_report);
+}
+
+template<typename TNode, typename TTree, typename TLeafRank, typename TLeaves, typename TReport>
+void ExpandCompactSLPFromBack(const TNode &t_root,
+                              std::size_t t_length,
+                              std::size_t t_sigma,
+                              const TTree &t_tree,
+                              const TLeafRank &t_leaf_rank,
+                              const TLeaves &t_leaves,
+                              TReport &t_report) {
+  auto get_first_node = [&t_sigma, &t_tree](auto tt_root, auto tt_state) {
+    tt_root -= t_sigma + 1;
+
+    std::size_t excess = 2;
+    while (excess > 0) {
+      if (t_tree[++tt_root] == 1) {
+        ++excess;
+        ++tt_state.excess;
+      } else {
+        --excess;
+      }
+    }
+
+    return std::make_pair(tt_root + t_sigma + 1 + 1, tt_state);
+  };
+
+  ExpandCompactSLP(t_root, get_first_node, false, t_length, t_sigma, t_tree, t_leaf_rank, t_leaves, t_report);
 }
 
 template<typename TNode, typename TTree, typename TLeafRank, typename TLeaves, typename TReport>
@@ -200,6 +244,7 @@ void ExpandCompactSLP(const TNode &t_root,
   ExpandCompactSLPFromFront(
       t_root, std::numeric_limits<std::size_t>::max(), t_sigma, t_tree, t_leaf_rank, t_leaves, t_report);
 }
+
 }
 
 #endif //GRAMMAR_SLP_COMPACT_H_
