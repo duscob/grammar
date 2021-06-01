@@ -54,6 +54,65 @@ void ComputeSLP(_II begin, _II end, _Encoder &&encoder, _SLP &slp, Args ...args)
   slp.ComputeMetadata(args...);
 }
 
+template<typename TIsTerminal, typename TGetChildren, typename TVariable, typename TReport>
+void ExpandSLP(const TIsTerminal &t_is_terminal,
+               const TGetChildren &t_get_children,
+               const TVariable &t_var,
+               std::size_t &t_length,
+               TReport &t_report) {
+  if (t_length == 0) return;
+
+  if (t_is_terminal(t_var)) {
+    t_report(t_var);
+    --t_length;
+    return;
+  }
+
+  auto[first, second] = t_get_children(t_var);
+  ExpandSLP(t_is_terminal, t_get_children, first, t_length, t_report);
+
+  if (t_length) {
+    ExpandSLP(t_is_terminal, t_get_children, second, t_length, t_report);
+  }
+}
+
+
+template<typename TRules, typename TVariable, typename TReport>
+void ExpandSLPForward(const TRules &t_rules,
+                      std::size_t t_sigma,
+                      const TVariable &t_var,
+                      std::size_t t_length,
+                      TReport &t_report) {
+  auto is_terminal = [&t_sigma](auto tt_var) {
+    return tt_var <= t_sigma;
+  };
+
+  auto get_children = [&t_rules, &t_sigma](const auto &tt_var) {
+    auto pos = (tt_var - t_sigma - 1) * 2;
+    return std::make_pair(t_rules[pos], t_rules[pos + 1]);
+  };
+
+  ExpandSLP(is_terminal, get_children, t_var, t_length, t_report);
+}
+
+
+template<typename TRules, typename TVariable, typename TReport>
+void ExpandSLPBackward(const TRules &t_rules,
+                       std::size_t t_sigma,
+                       const TVariable &t_var,
+                       std::size_t t_length,
+                       TReport &t_report) {
+  auto is_terminal = [&t_sigma](auto tt_var) {
+    return tt_var <= t_sigma;
+  };
+
+  auto get_children = [&t_rules, &t_sigma](const auto &tt_var) {
+    auto pos = (tt_var - t_sigma - 1) * 2;
+    return std::make_pair(t_rules[pos + 1], t_rules[pos]);
+  };
+
+  ExpandSLP(is_terminal, get_children, t_var, t_length, t_report);
+}
 
 template<typename _SLP, typename _OI>
 auto ComputeSpanCover(const _SLP &slp, std::size_t begin, std::size_t end, _OI out) {

@@ -125,6 +125,8 @@ if (grammar_build_tests)
 
     cxx_test_with_flags_and_args(sampled_slp_test "" "gtest;gtest_main;grammar" "" test/sampled_slp_test.cpp)
 
+    cxx_test_with_flags_and_args(slp_expand_test "" "gtest;gtest_main;${LIBS};grammar" "" test/slp_expand_test.cpp)
+
     cxx_test_with_flags_and_args(slp_compact_test "" "gtest;gtest_main;${LIBS};grammar" "" test/slp_compact_test.cpp)
 endif ()
 
