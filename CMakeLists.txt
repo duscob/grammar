@@ -148,4 +148,8 @@ if (grammar_build_benchmarks)
     cxx_executable_with_flags(chunks_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
 
     cxx_executable_with_flags(differential_slp_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" benchmark/differential_slp_bm.cpp)
+
+    cxx_executable_with_flags(bm_build_compact_slp "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_build_compact_slp.cpp)
+
+    cxx_executable_with_flags(bm_expand_slp "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_expand_slp.cpp)
 endif ()
