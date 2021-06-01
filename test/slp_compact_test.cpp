@@ -56,6 +56,13 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             3,
             std::vector<std::pair<size_t, size_t>>{{1, 2}, {4, 3}, {5, 4}},
+            std::vector<size_t>{6, 5},
+            std::vector<bool>{1, 1, 1, 0, 0, 0, 0},
+            std::vector<size_t>{1, 2, 3, 6},
+            std::map<size_t, size_t>{{4, 6}, {5, 5}, {6, 4}}),
+        std::make_tuple(
+            3,
+            std::vector<std::pair<size_t, size_t>>{{1, 2}, {4, 3}, {5, 4}},
             std::vector<size_t>{5, 6},
             std::vector<bool>{1, 1, 0, 0, 0, 1, 0, 0},
             std::vector<size_t>{1, 2, 3, 4, 5},
@@ -116,6 +123,13 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             3,
             std::vector<std::pair<size_t, size_t>>{{1, 2}, {4, 3}, {5, 4}},
+            std::vector<size_t>{6, 5},
+            std::vector<bool>{1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0},
+            std::vector<size_t>{1, 2, 3, 7},
+            std::map<size_t, size_t>{{4, 7}, {5, 6}, {6, 5}}),
+        std::make_tuple(
+            3,
+            std::vector<std::pair<size_t, size_t>>{{1, 2}, {4, 3}, {5, 4}},
             std::vector<size_t>{5, 6},
             std::vector<bool>{1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0},
             std::vector<size_t>{1, 2, 3, 5, 6},
@@ -159,7 +173,7 @@ TEST_P(ExpandCompactSLP_TF, ExpandCompactSLP) {
     expansion.emplace_back(tt_term);
   };
 
-  grammar::ExpandCompactSLP(var, sigma, tree, rank_leaf, leaves, report);
+  grammar::ExpandCompactSLP(tree, sigma, leaves, rank_leaf, var, report);
 
   const auto &e_expansion = std::get<4>(GetParam());
   ASSERT_EQ(e_expansion, expansion);
@@ -219,7 +233,7 @@ class ExpandPartialCompactSLP_TF : public ::testing::TestWithParam<
 > {
 };
 
-TEST_P(ExpandPartialCompactSLP_TF, ExpandCompactSLPFromFront) {
+TEST_P(ExpandPartialCompactSLP_TF, ExpandCompactSLPForward) {
   const auto &sigma = std::get<0>(GetParam());
   const auto &tree = std::get<1>(GetParam());
   auto rank_leaf = sdsl::bit_vector::rank_0_type(&tree);
@@ -232,7 +246,7 @@ TEST_P(ExpandPartialCompactSLP_TF, ExpandCompactSLPFromFront) {
     expansion.emplace_back(tt_term);
   };
 
-  grammar::ExpandCompactSLPFromFront(var, len, sigma, tree, rank_leaf, leaves, report);
+  grammar::ExpandCompactSLPForward(tree, sigma, leaves, rank_leaf, var, len, report);
 
   const auto &e_expansion = std::get<5>(GetParam());
   ASSERT_EQ(e_expansion, expansion);
@@ -287,9 +301,9 @@ INSTANTIATE_TEST_SUITE_P(
     )
 );
 
-class ExpandPartialCompactSLPFromBack_TF : public ExpandPartialCompactSLP_TF {};
+class ExpandPartialCompactSLPBackward_TF : public ExpandPartialCompactSLP_TF {};
 
-TEST_P(ExpandPartialCompactSLPFromBack_TF, ExpandCompactSLPFromBack) {
+TEST_P(ExpandPartialCompactSLPBackward_TF, ExpandCompactSLPBackward) {
   const auto &sigma = std::get<0>(GetParam());
   const auto &tree = std::get<1>(GetParam());
   auto rank_leaf = sdsl::bit_vector::rank_0_type(&tree);
@@ -302,7 +316,7 @@ TEST_P(ExpandPartialCompactSLPFromBack_TF, ExpandCompactSLPFromBack) {
     expansion.emplace_back(tt_term);
   };
 
-  grammar::ExpandCompactSLPFromBack(var, len, sigma, tree, rank_leaf, leaves, report);
+  grammar::ExpandCompactSLPBackward(tree, sigma, leaves, rank_leaf, var, len, report);
 
   const auto &e_expansion = std::get<5>(GetParam());
   ASSERT_EQ(e_expansion, expansion);
@@ -310,7 +324,7 @@ TEST_P(ExpandPartialCompactSLPFromBack_TF, ExpandCompactSLPFromBack) {
 
 INSTANTIATE_TEST_SUITE_P(
     CompactSLP,
-    ExpandPartialCompactSLPFromBack_TF,
+    ExpandPartialCompactSLPBackward_TF,
     ::testing::Values(
         std::make_tuple(
             3,
