@@ -174,6 +174,34 @@ class RePairEncoder<true> : public RePairBasicEncoder {
   }
 };
 
+template<typename TSigmaReporter, typename TRuleReporter>
+void ReadRePairRules(const std::string &t_filepath, TSigmaReporter &t_sigma_reporter, TRuleReporter &t_rule_reporter) {
+  std::ifstream rules_file(t_filepath, std::ios::binary);
+
+  if (!rules_file)
+    throw std::invalid_argument("Invalid file \"" + t_filepath + "\"");
+
+  int sigma = 0;
+  rules_file.read(reinterpret_cast<char *>(&sigma), sizeof(int));
+
+  t_sigma_reporter(sigma);
+
+  int rule[2];
+  while (rules_file.read(reinterpret_cast<char *>(&rule[0]), sizeof(rule))) {
+    t_rule_reporter(rule[0], rule[1]);
+  }
+}
+
+template<typename TCSeqReporter>
+void ReadRePairCompactSequence(const std::string &t_filepath, TCSeqReporter &t_c_seq_reporter) {
+  std::ifstream c_seq_file(t_filepath, std::ios::binary);
+
+  int symbol;
+  while (c_seq_file.read(reinterpret_cast<char *>(&symbol), sizeof(int))) {
+    t_c_seq_reporter(symbol);
+  }
+}
+
 
 template<bool kChomskyNormalForm>
 class RePairReader;
@@ -183,32 +211,34 @@ class RePairBasicReader {
  public:
   template<typename ReportRule, typename HandleCSeq>
   void Read(const std::string &_basename, ReportRule &_report_rule, HandleCSeq &_handle_c_seq) {
-    std::ifstream rules_file(_basename + ".R", std::ios::binary);
-    if (!rules_file)
-      throw std::invalid_argument("Invalid file \"" + _basename + ".R\"");
+    {
+      auto report_sigma = [this, &_report_rule](const auto &tt_sigma) {
+        sigma = tt_sigma;
+        _report_rule(tt_sigma - 1);
+      };
 
-    rules_file.read(reinterpret_cast<char *>(&sigma), sizeof(int));
+      auto report_rule = [this, &_report_rule](const auto &tt_left, const auto &tt_right) {
+        auto len_rule = get_rule_span_length(tt_left) + get_rule_span_length(tt_right);
 
-    _report_rule(sigma - 1);
+        _report_rule(tt_left, tt_right, len_rule);
+        rules_span_length_.push_back(len_rule);
+        rules_height_.push_back(std::max(get_rule_height(tt_left), get_rule_height(tt_right)) + 1);
+      };
 
-    int rule[2];
-    while (rules_file.read(reinterpret_cast<char *>(&rule[0]), sizeof(rule))) {
-      auto lrule = get_rule_span_length(rule[0]) + get_rule_span_length(rule[1]);
-
-      _report_rule(rule[0], rule[1], lrule);
-      rules_span_length_.push_back(lrule);
-      rules_height_.push_back(std::max(get_rule_height(rule[0]), get_rule_height(rule[1])) + 1);
+      ReadRePairRules(_basename + ".R", report_sigma, report_rule);
     }
 
-    std::ifstream cseq_file(_basename + ".C", std::ios::binary);
+    {
+      std::vector<int> cseq;
 
-    std::vector<int> cseq;
-    int symbol;
-    while (cseq_file.read(reinterpret_cast<char *>(&symbol), sizeof(int))) {
-      cseq.push_back(symbol);
+      auto report_c_seq = [&cseq](const auto &tt_symbol) {
+        cseq.push_back(tt_symbol);
+      };
+
+      ReadRePairCompactSequence(_basename + ".C", report_c_seq);
+
+      _handle_c_seq(cseq.data(), cseq.size());
     }
-
-    _handle_c_seq(cseq.data(), cseq.size());
 
     rules_span_length_.clear();
     rules_height_.clear();

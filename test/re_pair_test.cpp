@@ -319,38 +319,6 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 
-//TEST(RePair, repair) {
-//  std::string fname = "/home/dcobas/Workspace/PhD/Research/Document_Retrieval/Codes/repair/bal/docs.out";
-//
-//  FILE *Tf, *Rf, *Cf;
-//
-//  struct stat s;
-//  if (stat(fname.c_str(), &s) != 0) {
-//    fprintf(stderr, "Error: cannot stat file %s\n", fname.c_str());
-//    exit(1);
-//  }
-//
-//  int i, len;
-//  len = s.st_size / sizeof(int);
-//  Tf = fopen(fname.c_str(), "r");
-//  if (Tf == NULL) {
-//    fprintf(stderr, "Error: cannot open file %s for reading\n", fname.c_str());
-//    exit(1);
-//  }
-//
-//  int *C = (int *) malloc(len * sizeof(int));
-//  if (fread(C, sizeof(int), len, Tf) != len) {
-//    fprintf(stderr, "Error: cannot read file %s\n", fname.c_str());
-//    exit(1);
-//  }
-//  fclose(Tf);
-//
-//  grammar::RePairBasicEncoder encoder;
-//  encoder.prepare(C, len);
-//  encoder.repair(C, len, [](auto, auto, auto){});
-//}
-
-
 int main(int argc, char **argv) {
   gflags::AllowCommandLineReparsing();
   gflags::ParseCommandLineFlags(&argc, &argv, false);
