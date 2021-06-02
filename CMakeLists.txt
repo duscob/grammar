@@ -10,13 +10,15 @@ option(grammar_build_benchmarks "Build all of grammar's benchmarks." ON)
 option(grammar_install "Enable installation of grammar. (Projects embedding grammar may want to turn this OFF.)" ON)
 
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 
 ########################################################################
 #
 # Project-wide settings
-project(grammar CXX C)
+project(grammar
+        VERSION 0.2.0
+        LANGUAGES CXX C)
 
 
 # Location of additional cmake modules
