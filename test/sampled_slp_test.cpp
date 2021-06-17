@@ -38,7 +38,11 @@ TEST_P(SampledSLPLeaves_TF, ComputeSampledSLPLeaf) {
   Nodes leaves;
   auto &block_size = std::get<2>(GetParam());
 
-  grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(leaves));
+  auto action = [&leaves](const auto &tt_slp, const auto &tt_var) {
+    leaves.emplace_back(tt_var);
+  };
+
+  grammar::ComputeSampledSLPLeaves(slp_, block_size, action);
 
   // Check leaves
   const auto &e_leaves = std::get<3>(GetParam());;
@@ -59,7 +63,11 @@ TEST_P(SampledSLPLeaves_TF, ComputeSampledSLPLeavesAndItsPTS) {
 
   grammar::Chunks<> spts;
   grammar::AddSet<grammar::Chunks<>> add_set(spts);
-  grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(leaves), add_set);
+  auto action = [&leaves, &add_set](const auto &tt_slp, const auto &tt_var) {
+    leaves.emplace_back(tt_var);
+    add_set(tt_slp, tt_var);
+  };
+  grammar::ComputeSampledSLPLeaves(slp_, block_size, action);
 
   // Check leaves
   const auto &e_leaves = std::get<3>(GetParam());;
@@ -155,7 +163,11 @@ TEST_P(SampledSLPNodes_TF, ComputeSampledSLPNodes) {
 
   grammar::Chunks<> spts;
   grammar::AddSet<grammar::Chunks<>> add_set(spts);
-  grammar::ComputeSampledSLPLeaves(slp_, block_size, back_inserter(nodes), add_set);
+  auto action = [&nodes, &add_set](const auto &tt_slp, const auto &tt_var) {
+    nodes.emplace_back(tt_var);
+    add_set(tt_slp, tt_var);
+  };
+  grammar::ComputeSampledSLPLeaves(slp_, block_size, action);
 
   auto storing_factor = std::get<3>(GetParam());
   grammar::MustBeSampled<grammar::Chunks<>> pred(grammar::AreChildrenTooBig<grammar::Chunks<>>(spts, storing_factor));

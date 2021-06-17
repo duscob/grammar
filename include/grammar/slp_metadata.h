@@ -260,7 +260,7 @@ class SampledPTS {
     slp_ = _slp;
     std::vector<_SLPValueType> nodes;
 
-    auto add_set = [this](const auto &_slp, std::size_t _curr_var) {
+    auto add_set = [this, &nodes](const auto &_slp, std::size_t _curr_var) {
       auto set = _slp.Span(_curr_var);
       sort(set.begin(), set.end());
       set.erase(unique(set.begin(), set.end()), set.end());
@@ -269,8 +269,10 @@ class SampledPTS {
       if (vars_.count(_curr_var) == 0) {
         vars_[_curr_var] = pts_.size();
       }
+
+      nodes.emplace_back(_curr_var);
     };
-    ComputeSampledSLPLeaves(*slp_, _block_size, back_inserter(nodes), add_set);
+    ComputeSampledSLPLeaves(*slp_, _block_size, add_set);
 
     grammar::MustBeSampled<decltype(pts_)> pred(grammar::AreChildrenTooBig<decltype(pts_)>(pts_, _storing_factor));
 

@@ -98,8 +98,12 @@ class SampledSLP {
                _NodeAction &&_node_action,
                const _Predicate &_pred) {
     std::vector<typename _SLP::VariableType> nodes;
+    auto leaf_action = [&nodes, &_leaf_action](const auto &tt_slp, const auto &tt_var) {
+      nodes.emplace_back(tt_var);
+      _leaf_action(tt_slp, tt_var);
+    };
 
-    ComputeSampledSLPLeaves(_slp, _block_size, back_inserter(nodes), _leaf_action);
+    ComputeSampledSLPLeaves(_slp, _block_size, leaf_action);
 
     l = nodes.size();
 

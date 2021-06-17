@@ -219,23 +219,16 @@ auto ComputeSpanCoverFromBottom(const _SLP &slp, std::size_t begin, std::size_t 
 }
 
 
-template<typename _SLP, typename _OI, typename _Action = NoAction>
-void ComputeSampledSLPLeaves(const _SLP &_slp, uint64_t _block_size, _OI _out, _Action &&_action = NoAction()) {
-  ComputeSampledSLPLeaves(_slp, _block_size, _out, _slp.Start(), _action);
+template<typename _SLP, typename _Action>
+void ComputeSampledSLPLeaves(const _SLP &_slp, uint64_t _block_size, _Action &&_action){
+  ComputeSampledSLPLeaves(_slp, _block_size, _slp.Start(), _action);
 }
 
 
-template<typename _SLP, typename _OI, typename _Action = NoAction>
-void ComputeSampledSLPLeaves(const _SLP &_slp,
-                             uint64_t _block_size,
-                             _OI _out,
-                             std::size_t _curr_var,
-                             _Action &&_action = NoAction()) {
+template<typename _SLP, typename _Action>
+void ComputeSampledSLPLeaves(const _SLP &_slp, uint64_t _block_size, std::size_t _curr_var, _Action &&_action) {
   auto length = _slp.SpanLength(_curr_var);
   if (length <= _block_size) {
-    _out = _curr_var;
-    ++_out;
-
     _action(_slp, _curr_var);
 
     return;
@@ -243,8 +236,8 @@ void ComputeSampledSLPLeaves(const _SLP &_slp,
 
   const auto &children = _slp[_curr_var];
 
-  ComputeSampledSLPLeaves(_slp, _block_size, _out, children.first, _action);
-  ComputeSampledSLPLeaves(_slp, _block_size, _out, children.second, _action);
+  ComputeSampledSLPLeaves(_slp, _block_size, children.first, _action);
+  ComputeSampledSLPLeaves(_slp, _block_size, children.second, _action);
 }
 
 
