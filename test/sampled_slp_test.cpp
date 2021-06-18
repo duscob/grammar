@@ -6,6 +6,7 @@
 
 #include <sdsl/sd_vector.hpp>
 
+#include "grammar/slp_partition.h"
 #include "grammar/sampled_slp.h"
 #include "grammar/slp.h"
 #include "grammar/slp_metadata.h"
@@ -255,6 +256,29 @@ TEST_P(SampledSLPMap_TF, LeafAndPos) {
 }
 
 
+TEST_P(SampledSLPMap_TF, PartitionAndPosition) {
+  grammar::Chunks<> pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(pts);
+  auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, 2.5));
+  auto [l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(slp_, 4, predicate, add_set, add_set);
+  grammar::SLPPartition<> slp_partition(l, leaves);
+
+  const auto &pos = std::get<2>(GetParam());
+
+  for (int i = 0; i < pos.size(); ++i) {
+    EXPECT_EQ(slp_partition.Partition(pos[i].first), pos[i].second) << i;
+  }
+
+  std::set<std::size_t> e_leaves;
+  for (int i = 0; i < pos.size(); ++i) {
+    if (e_leaves.count(pos[i].second) == 0) {
+      EXPECT_EQ(slp_partition.Position(pos[i].second), pos[i].first) << i;
+      e_leaves.insert(pos[i].second);
+    }
+  }
+}
+
+
 TEST_P(SampledSLPMap_TF, CombinedSLPLeafAndPos) {
   grammar::CombinedSLP<> cslp;
   {
@@ -348,6 +372,26 @@ TEST_P(SampledSLPParent_TF, FirstChildAndParent) {
   }
 }
 
+TEST_P(SampledSLPParent_TF, PartitionTreeFirstChildAndParent) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(pts);
+  auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(
+      grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor));
+  auto[l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(
+      slp_, block_size, predicate, add_set, add_set);
+  grammar::SLPPartitionTree<> slp_partition_tree(l, first_children, parents, next_leaves);
+
+  const auto &pos = std::get<4>(GetParam());
+  const auto &e_res = std::get<5>(GetParam());
+
+  for (int i = 0; i < pos.size(); ++i) {
+    EXPECT_TRUE(slp_partition_tree.IsFirstChild(pos[i]));
+    EXPECT_EQ(slp_partition_tree.Parent(pos[i]), e_res[i]);
+  }
+}
 
 TEST_P(SampledSLPParent_TF, CombinedSLPFirstChildAndParent) {
   grammar::CombinedSLP<> cslp;
@@ -404,6 +448,94 @@ TEST_P(SampledSLPParent_TF, Serialization) {
   EXPECT_TRUE(sslp == sslp_loaded);
 }
 
+
+TEST_P(SampledSLPParent_TF, SLPPartitionSerialization) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(pts);
+  auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(
+      grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor));
+  auto[l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(
+      slp_, block_size, predicate, add_set, add_set);
+  grammar::SLPPartition<> slp_partition(l, leaves);
+  {
+    std::ofstream out("tmp.slp_partition", std::ios::binary);
+    slp_partition.serialize(out);
+  }
+
+  grammar::SLPPartition<> slp_partition_loaded;
+  EXPECT_FALSE(slp_partition == slp_partition_loaded);
+
+  {
+    std::ifstream in("tmp.slp_partition", std::ios::binary);
+    slp_partition_loaded.load(in);
+  }
+  EXPECT_TRUE(slp_partition == slp_partition_loaded);
+}
+
+TEST_P(SampledSLPParent_TF, SLPPartitionMoveConstructor) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(pts);
+  auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(
+      grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor));
+  auto[l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(
+      slp_, block_size, predicate, add_set, add_set);
+
+  grammar::SLPPartition<sdsl::bit_vector> slp_partition(l, leaves);
+  auto slp_partition_move = grammar::SLPPartition(l, std::move(leaves));
+
+  EXPECT_EQ(slp_partition, slp_partition_move);
+}
+
+TEST_P(SampledSLPParent_TF, SLPPartitionTreeSerialization) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(pts);
+  auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(
+      grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor));
+  auto[l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(
+      slp_, block_size, predicate, add_set, add_set);
+  grammar::SLPPartitionTree<> slp_partition_tree(l, first_children, parents, next_leaves);
+  {
+    std::ofstream out("tmp.slp_partition", std::ios::binary);
+    slp_partition_tree.serialize(out);
+  }
+
+  grammar::SLPPartitionTree<> slp_partition_tree_loaded;
+  EXPECT_FALSE(slp_partition_tree == slp_partition_tree_loaded);
+
+  {
+    std::ifstream in("tmp.slp_partition", std::ios::binary);
+    slp_partition_tree_loaded.load(in);
+  }
+  EXPECT_TRUE(slp_partition_tree == slp_partition_tree_loaded);
+}
+
+TEST_P(SampledSLPParent_TF, SLPPartitionTreeMoveConstructor) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(pts);
+  auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(
+      grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor));
+  auto[l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(
+      slp_, block_size, predicate, add_set, add_set);
+
+  grammar::SLPPartitionTree<sdsl::bit_vector, sdsl::bit_vector::rank_1_type, sdsl::int_vector<>, sdsl::int_vector<>>
+      slp_partition_tree(l, first_children, parents, next_leaves);
+  auto slp_partition_tree_moved = grammar::SLPPartitionTree(
+      l, std::move(first_children), std::move(parents), std::move(next_leaves));
+
+  EXPECT_EQ(slp_partition_tree, slp_partition_tree_moved);
+}
 
 INSTANTIATE_TEST_CASE_P(
     SampledSLP,
@@ -486,6 +618,29 @@ TEST_P(SLPSpanCoverFromBottom_TF, SpanCover) {
 
   SpanCover result;
   result.second = grammar::ComputeSpanCoverFromBottom(sslp, span.first, span.second, back_inserter(result.first));
+
+  auto &eresult = std::get<5>(GetParam());
+  EXPECT_EQ(result, eresult);
+}
+
+TEST_P(SLPSpanCoverFromBottom_TF, PartitionTreeCover) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::Chunks<> pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(pts);
+  auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(
+      grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor));
+  auto[l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(
+      slp_, block_size, predicate, add_set, add_set);
+  grammar::SLPPartition<> partition(l, leaves);
+  grammar::SLPPartitionTree<> partition_tree(l, first_children, parents, next_leaves);
+
+  auto &span = std::get<4>(GetParam());
+
+  SpanCover result;
+  auto reporter = [&result](auto tt_node) { result.first.emplace_back(tt_node); };
+  result.second = grammar::ComputePartitionTreeCover(partition, partition_tree, span.first, span.second, reporter);
 
   auto &eresult = std::get<5>(GetParam());
   EXPECT_EQ(result, eresult);

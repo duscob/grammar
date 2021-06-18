@@ -66,7 +66,8 @@ set(SOURCE_FILES include/grammar/re_pair.h
         include/grammar/sampled_slp.h
         include/grammar/slp_compact.h
         include/grammar/io.h
-        include/grammar/differential_slp.h)
+        include/grammar/differential_slp.h
+        include/grammar/slp_partition.h)
 
 find_library(SDSL_LIB sdsl)
 find_library(DIVSUFSORT_LIB divsufsort)

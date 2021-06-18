@@ -15,6 +15,7 @@
 #include "slp_helper.h"
 #include "slp.h"
 #include "slp_metadata.h"
+#include "slp_partition.h"
 
 
 namespace grammar {
@@ -76,58 +77,12 @@ class SampledSLP {
                _LeafAction &&_leaf_action,
                _NodeAction &&_node_action,
                const _Predicate &_pred) {
-    std::vector<typename _SLP::VariableType> nodes;
-    auto leaf_action = [&nodes, &_leaf_action](const auto &tt_slp, const auto &tt_var) {
-      nodes.emplace_back(tt_var);
-      _leaf_action(tt_slp, tt_var);
-    };
+    std::tie(l, b_l, b_f, f, n) = PartitionSLP(_slp, _block_size, _pred, _leaf_action, _node_action);
 
-    ComputeSampledSLPLeaves(_slp, _block_size, leaf_action);
+    b_l_rank = _BVLeafNodesMarksRank(&b_l);
+    b_l_select = _BVLeafNodesMarksSelect(&b_l);
 
-    l = nodes.size();
-
-    {
-      sdsl::bit_vector tmp_b_l(_slp.SpanLength(_slp.Start()) + 1, 0);
-      std::size_t pos = 0;
-      for (const auto &item : nodes) {
-        tmp_b_l[pos] = 1;
-        pos += _slp.SpanLength(item);
-      }
-      tmp_b_l[tmp_b_l.size() - 1] = 1;
-      b_l = _BVLeafNodesMarks(tmp_b_l);
-      b_l_rank = _BVLeafNodesMarksRank(&b_l);
-      b_l_select = _BVLeafNodesMarksSelect(&b_l);
-    }
-
-    std::vector<bool> tmp_b_f(nodes.size(), 0);
-    std::map<std::size_t, std::size_t> tmp_f;
-    std::map<std::size_t, std::size_t> tmp_n;
-
-    auto build_inner_data = [&_node_action, &tmp_b_f, &tmp_f, &tmp_n, this](
-        const _SLP &_slp,
-        std::size_t _curr_var,
-        const auto &_nodes,
-        std::size_t _new_node,
-        const auto &_left_ranges,
-        const auto &_right_ranges) {
-      _node_action(_slp, _curr_var, _nodes, _new_node, _left_ranges, _right_ranges);
-
-      tmp_b_f.emplace_back(0);
-      tmp_b_f[_left_ranges.front()] = 1;
-
-      auto nn = _new_node - l;
-      tmp_f[_left_ranges.front()] = nn;
-      auto last_child = _right_ranges.back() + 1;
-      tmp_n[nn] = (last_child <= l) ? last_child : tmp_n[last_child - l - 1];
-    };
-
-    ComputeSampledSLPNodes(_slp, _block_size, nodes, _pred, build_inner_data);
-
-    Construct(b_f, tmp_b_f);
     b_f_rank = _BVFirstChildrenRank(&b_f);
-
-    Construct(f, tmp_f);
-    Construct(n, tmp_n);
   }
 
   std::size_t Leaf(std::size_t _pos) const {
