@@ -7,6 +7,10 @@
 
 #include <type_traits>
 #include <algorithm>
+#include <vector>
+#include <map>
+
+#include <sdsl/bit_vectors.hpp>
 
 
 namespace grammar {
@@ -28,6 +32,27 @@ template<typename _X, typename _Y>
 typename std::enable_if<!std::is_constructible<_X, _Y>::value>::type Construct(_X &_x, const _Y &_y) {
   _x = _X(_y.size());
   std::copy(_y.begin(), _y.end(), _x.begin());
+}
+
+
+template<typename TBv>
+void Construct(TBv &_bv, const std::vector<bool> &_tmp_bv) {
+  sdsl::bit_vector bv(_tmp_bv.size());
+  std::copy(_tmp_bv.begin(), _tmp_bv.end(), bv.begin());
+
+  _bv = TBv(bv);
+}
+
+
+template<typename TV>
+void Construct(TV &_v, const std::map<std::size_t, std::size_t> &_tmp_v) {
+  std::vector<std::size_t> v(0);
+  v.reserve(_tmp_v.size());
+  for (const auto &item : _tmp_v) {
+    v.emplace_back(item.second);
+  }
+
+  Construct(_v, v);
 }
 
 

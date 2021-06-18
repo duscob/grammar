@@ -48,27 +48,6 @@ class AddSet {
 };
 
 
-template<typename _BV>
-void Construct(_BV &_bv, const std::vector<bool> &_tmp_bv) {
-  sdsl::bit_vector bv(_tmp_bv.size());
-  std::copy(_tmp_bv.begin(), _tmp_bv.end(), bv.begin());
-
-  _bv = _BV(bv);
-}
-
-
-template<typename _V>
-void Construct(_V &_v, const std::map<std::size_t, std::size_t> &_tmp_v) {
-  std::vector<std::size_t> v(0);
-  v.reserve(_tmp_v.size());
-  for (const auto &item : _tmp_v) {
-    v.emplace_back(item.second);
-  }
-
-  _v = _V(v);
-}
-
-
 template<typename _BVLeafNodesMarks = sdsl::sd_vector<>,
     typename _BVLeafNodesMarksRank = typename _BVLeafNodesMarks::rank_1_type,
     typename _BVLeafNodesMarksSelect = typename _BVLeafNodesMarks::select_1_type,
