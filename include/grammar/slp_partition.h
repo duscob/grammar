@@ -24,6 +24,8 @@ template<typename TBvPartitionMarks = sdsl::sd_vector<>,
     typename TBvPartitionMarksSelect = typename TBvPartitionMarks::select_1_type>
 class SLPPartition {
  public:
+  typedef std::size_t size_type;
+
   SLPPartition() = default;
 
   template<typename TTBvMarks>
@@ -36,6 +38,8 @@ class SLPPartition {
   auto Partition(std::size_t t_pos) const { return partitions_rank_(t_pos + 1); }
 
   auto Position(std::size_t t_partition) const { return partitions_select_(t_partition); }
+
+  auto size() const { return n_partitions_; }
 
   bool operator==(const SLPPartition &t_other) const {
     return n_partitions_ == t_other.n_partitions_
@@ -80,6 +84,8 @@ template<typename TBvFirstChildren = sdsl::sd_vector<>,
     typename TNextLeaves = sdsl::vlc_vector<>>
 class SLPPartitionTree {
  public:
+  typedef std::size_t size_type;
+
   SLPPartitionTree() = default;
 
   template<typename TTBvFirstChildren, typename TTParents, typename TTNextLeaves>
@@ -182,11 +188,11 @@ auto PartitionSLP(const TSLP &t_slp,
     b_leaves[b_leaves.size() - 1] = true;
   }
 
-  std::vector<bool> tmp_b_f(nodes.size(), 0);
-  std::map<std::size_t, std::size_t> tmp_f;
-  std::map<std::size_t, std::size_t> tmp_n;
+  std::vector<bool> tmp_b_first_children(nodes.size(), 0);
+  std::map<std::size_t, std::size_t> tmp_parents;
+  std::map<std::size_t, std::size_t> tmp_next_leaves;
 
-  auto build_inner_data = [&t_node_action, &tmp_b_f, &tmp_f, &tmp_n, &l](
+  auto build_inner_data = [&t_node_action, &tmp_b_first_children, &tmp_parents, &tmp_next_leaves, &l](
       const TSLP &_slp,
       std::size_t _curr_var,
       const auto &_nodes,
@@ -195,26 +201,26 @@ auto PartitionSLP(const TSLP &t_slp,
       const auto &_right_ranges) {
     t_node_action(_slp, _curr_var, _nodes, _new_node, _left_ranges, _right_ranges);
 
-    tmp_b_f.emplace_back(0);
-    tmp_b_f[_left_ranges.front()] = 1;
+    tmp_b_first_children.emplace_back(0);
+    tmp_b_first_children[_left_ranges.front()] = 1;
 
     auto nn = _new_node - l;
-    tmp_f[_left_ranges.front()] = nn;
+    tmp_parents[_left_ranges.front()] = nn;
     auto last_child = _right_ranges.back() + 1;
-    tmp_n[nn] = (last_child <= l) ? last_child : tmp_n[last_child - l - 1];
+    tmp_next_leaves[nn] = (last_child <= l) ? last_child : tmp_next_leaves[last_child - l - 1];
   };
 
   ComputeSampledSLPNodes(t_slp, t_block_size, nodes, t_pred, build_inner_data);
 
   sdsl::bit_vector b_first_children;
-  Construct(b_first_children, tmp_b_f);
+  Construct(b_first_children, tmp_b_first_children);
 
   sdsl::int_vector<> parents;
-  Construct(parents, tmp_f);
+  Construct(parents, tmp_parents);
   sdsl::util::bit_compress(parents);
 
   sdsl::int_vector<> next_leaves;
-  Construct(next_leaves, tmp_n);
+  Construct(next_leaves, tmp_next_leaves);
   sdsl::util::bit_compress(next_leaves);
 
   return std::make_tuple(l, b_leaves, b_first_children, parents, next_leaves);
