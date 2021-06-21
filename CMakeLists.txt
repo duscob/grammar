@@ -155,4 +155,6 @@ if (grammar_build_benchmarks)
     cxx_executable_with_flags(bm_build_compact_slp "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_build_compact_slp.cpp)
 
     cxx_executable_with_flags(bm_expand_slp "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_expand_slp.cpp)
+
+    cxx_executable_with_flags(bm_build_slp_partition "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_build_slp_partition.cpp)
 endif ()

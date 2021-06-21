@@ -22,6 +22,12 @@ const std::string KEY_SLP_COMPACT_WITH_BP_TREE = "slp_compact_bp_tree";
 const std::string KEY_SLP_COMPACT_WITH_BP_LEAVES = "slp_compact_bp_leaves";
 const std::string KEY_SLP_COMPACT_WITH_BP_NO_TERMINAL_MAP = "slp_compact_bp_nt_map";
 const std::string KEY_SLP_COMPACT_WITH_BP_C_SEQ = "slp_compact_bp_c_seq";
+
+const std::string KEY_SLP_PARTITION = "slp_partition";
+const std::string KEY_SLP_PARTITION_TREE = "slp_partition_tree";
+const std::string KEY_SLP_PARTITION_VARS = "slp_partition_vars";
+const std::string KEY_SLP_PARTITION_C_SEQ = "slp_partition_c_seq";
+const std::string KEY_SLP_PTS = "slp_pts";
 }
 
 #endif //GRAMMAR_BENCHMARK_DEFINITIONS_H_
