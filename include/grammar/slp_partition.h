@@ -162,12 +162,8 @@ class SLPPartitionTree {
   TNextLeaves next_leaves_; // n
 };
 
-template<typename TSLP, typename TPredicate, typename TLeafAction, typename TNodeAction>
-auto PartitionSLP(const TSLP &t_slp,
-                  uint32_t t_block_size,
-                  const TPredicate &t_pred,
-                  TLeafAction &&t_leaf_action,
-                  TNodeAction &&t_node_action) {
+template<typename TSLP, typename TLeafAction>
+auto ComputeSLPPartition(const TSLP &t_slp, uint32_t t_block_size, TLeafAction &&t_leaf_action) {
   std::vector<typename TSLP::VariableType> nodes;
   auto leaf_action = [&nodes, &t_leaf_action](const auto &tt_slp, const auto &tt_var) {
     nodes.emplace_back(tt_var);
@@ -176,7 +172,7 @@ auto PartitionSLP(const TSLP &t_slp,
 
   ComputeSampledSLPLeaves(t_slp, t_block_size, leaf_action);
 
-  auto l = nodes.size();
+  auto n_leaves = nodes.size();
 
   sdsl::bit_vector b_leaves(t_slp.SpanLength(t_slp.Start()) + 1, 0);
   {
@@ -188,11 +184,21 @@ auto PartitionSLP(const TSLP &t_slp,
     b_leaves[b_leaves.size() - 1] = true;
   }
 
-  std::vector<bool> tmp_b_first_children(nodes.size(), 0);
+  return std::make_tuple(n_leaves, b_leaves, nodes);
+}
+
+template<typename TSLP, typename TPredicate, typename TNodeAction>
+auto ComputeSLPPartitionTree(const TSLP &t_slp,
+                             uint32_t t_block_size,
+                             const TPredicate &t_pred,
+                             std::size_t t_n_leaves,
+                             std::vector<typename TSLP::VariableType> &t_nodes, // init with leaves
+                             TNodeAction &&t_node_action) {
+  std::vector<bool> tmp_b_first_children(t_nodes.size(), 0);
   std::map<std::size_t, std::size_t> tmp_parents;
   std::map<std::size_t, std::size_t> tmp_next_leaves;
 
-  auto build_inner_data = [&t_node_action, &tmp_b_first_children, &tmp_parents, &tmp_next_leaves, &l](
+  auto build_inner_data = [&t_node_action, &tmp_b_first_children, &tmp_parents, &tmp_next_leaves, &t_n_leaves](
       const TSLP &_slp,
       std::size_t _curr_var,
       const auto &_nodes,
@@ -204,13 +210,13 @@ auto PartitionSLP(const TSLP &t_slp,
     tmp_b_first_children.emplace_back(0);
     tmp_b_first_children[_left_ranges.front()] = 1;
 
-    auto nn = _new_node - l;
+    auto nn = _new_node - t_n_leaves;
     tmp_parents[_left_ranges.front()] = nn;
     auto last_child = _right_ranges.back() + 1;
-    tmp_next_leaves[nn] = (last_child <= l) ? last_child : tmp_next_leaves[last_child - l - 1];
+    tmp_next_leaves[nn] = (last_child <= t_n_leaves) ? last_child : tmp_next_leaves[last_child - t_n_leaves - 1];
   };
 
-  ComputeSampledSLPNodes(t_slp, t_block_size, nodes, t_pred, build_inner_data);
+  ComputeSampledSLPNodes(t_slp, t_block_size, t_nodes, t_pred, build_inner_data);
 
   sdsl::bit_vector b_first_children;
   Construct(b_first_children, tmp_b_first_children);
@@ -223,7 +229,21 @@ auto PartitionSLP(const TSLP &t_slp,
   Construct(next_leaves, tmp_next_leaves);
   sdsl::util::bit_compress(next_leaves);
 
-  return std::make_tuple(l, b_leaves, b_first_children, parents, next_leaves);
+  return std::make_tuple(b_first_children, parents, next_leaves);
+}
+
+template<typename TSLP, typename TPredicate, typename TLeafAction, typename TNodeAction>
+auto PartitionSLP(const TSLP &t_slp,
+                  uint32_t t_block_size,
+                  const TPredicate &t_pred,
+                  TLeafAction &&t_leaf_action,
+                  TNodeAction &&t_node_action) {
+  auto [n_leaves, b_leaves, nodes] = ComputeSLPPartition(t_slp, t_block_size, t_leaf_action);
+
+  auto [b_first_children, parents, next_leaves] = ComputeSLPPartitionTree(
+      t_slp, t_block_size, t_pred, n_leaves, nodes, t_node_action);
+
+  return std::make_tuple(n_leaves, b_leaves, b_first_children, parents, next_leaves);
 }
 
 template<typename TSLPPartition, typename TSLPPartitionTree, typename TReporter>

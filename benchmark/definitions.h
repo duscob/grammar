@@ -25,7 +25,8 @@ const std::string KEY_SLP_COMPACT_WITH_BP_C_SEQ = "slp_compact_bp_c_seq";
 
 const std::string KEY_SLP_PARTITION = "slp_partition";
 const std::string KEY_SLP_PARTITION_TREE = "slp_partition_tree";
-const std::string KEY_SLP_PARTITION_VARS = "slp_partition_vars";
+const std::string KEY_SLP_PARTITION_LEAVES = "slp_partition_leaves";
+const std::string KEY_SLP_PARTITION_LEAVES_PTS = "slp_partition_leaves_pts";
 const std::string KEY_SLP_PARTITION_C_SEQ = "slp_partition_c_seq";
 const std::string KEY_SLP_PTS = "slp_pts";
 }

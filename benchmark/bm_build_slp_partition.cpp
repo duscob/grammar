@@ -26,11 +26,11 @@ DEFINE_bool(rebuild, false, "Rebuild all the items.");
 void SetupCommonCounters(benchmark::State &t_state) {
   t_state.counters["leaves"] = 0;
   t_state.counters["nodes"] = 0;
-  t_state.counters["partition_pts"] = 0;
+  t_state.counters["pts"] = 0;
   t_state.counters["c_seq"] = 0;
-  t_state.counters["partition_c_seq"] = 0;
+  t_state.counters["p_c_seq"] = 0;
   t_state.counters["rules"] = 0;
-  t_state.counters["valid_rules"] = 0;
+  t_state.counters["p_rules"] = 0;
 }
 
 void SerializeChunks(const grammar::Chunks<> &t_chunks,
@@ -73,7 +73,7 @@ void SerializeChunks(const grammar::Chunks<> &t_chunks,
 }
 
 auto BM_BuildSLPPartition = [](benchmark::State &t_state, auto *t_config) {
-  std::string suffix = "-" + std::to_string(FLAGS_bs) + "-" + std::to_string(FLAGS_sf);
+  std::string suffix = "_" + std::to_string(FLAGS_bs);
 
   grammar::SLP<> slp;
   {
@@ -83,47 +83,88 @@ auto BM_BuildSLPPartition = [](benchmark::State &t_state, auto *t_config) {
   }
 
   grammar::SLPPartition<> partition;
-  grammar::SLPPartitionTree<> partition_tree;
-  sdsl::int_vector<> partition_leaves;
+  std::vector<uint32_t> partition_leaves_v;
+  sdsl::int_vector<> partition_leaves_iv;
 
   grammar::Chunks<> slp_pts;
+  grammar::AddSet<grammar::Chunks<>> add_set(slp_pts);
+
+  for (auto _ : t_state) {
+    slp_pts = grammar::Chunks<>();
+    partition_leaves_v.clear();
+
+    auto[n_leaves, b_leaves, leaves] = grammar::ComputeSLPPartition(slp, FLAGS_bs, add_set);
+
+    partition = grammar::SLPPartition<>(n_leaves, b_leaves);
+
+    partition_leaves_v.swap(leaves);
+    grammar::Construct(partition_leaves_iv, partition_leaves_v);
+    sdsl::util::bit_compress(partition_leaves_iv);
+  }
+
+  sdsl::store_to_cache(partition, grammar::KEY_SLP_PARTITION + suffix, *t_config);
+  sdsl::store_to_cache(partition_leaves_v, grammar::KEY_SLP_PARTITION_LEAVES + suffix + "_v", *t_config);
+  sdsl::store_to_cache(partition_leaves_iv, grammar::KEY_SLP_PARTITION_LEAVES + suffix + "_iv", *t_config);
+
+  sdsl::store_to_cache(slp_pts, grammar::KEY_SLP_PARTITION_LEAVES_PTS + suffix, *t_config);
+
+  SetupCommonCounters(t_state);
+  t_state.counters["leaves"] = partition.size();
+  t_state.counters["pts"] = slp_pts.GetObjects().size();
+};
+
+auto BM_BuildSLPPartitionTree = [](benchmark::State &t_state, auto *t_config) {
+  std::string suffix_bs = "_" + std::to_string(FLAGS_bs);
+  std::string suffix = "_" + std::to_string(FLAGS_bs) + "_" + std::to_string(FLAGS_sf);
+
+  grammar::SLP<> slp;
+  {
+    auto slp_wrapper = grammar::BuildSLPWrapper(slp);
+    grammar::RePairReader<true> reader;
+    reader.Read(FLAGS_data, slp_wrapper);
+  }
+
+  grammar::SLPPartitionTree<> partition_tree;
+
+  std::vector<uint32_t> partition_leaves_v;
+  sdsl::load_from_cache(partition_leaves_v, grammar::KEY_SLP_PARTITION_LEAVES + suffix_bs + "_v", *t_config);
+
+  std::vector<uint32_t> nodes(partition_leaves_v);
+
+  grammar::Chunks<> slp_leaves_pts;
+  sdsl::load_from_cache(slp_leaves_pts, grammar::KEY_SLP_PARTITION_LEAVES_PTS + suffix_bs, *t_config);
+
+  grammar::Chunks<> slp_pts(slp_leaves_pts);
   grammar::AddSet<grammar::Chunks<>> add_set(slp_pts);
   auto predicate = grammar::MustBeSampled<grammar::Chunks<>>(
       grammar::AreChildrenTooBig<grammar::Chunks<>>(slp_pts, FLAGS_sf));
 
-  std::vector<uint32_t> tmp_partition_leaves;
-  auto leaf_action = [&tmp_partition_leaves, &add_set](const auto &tt_slp, const auto &tt_var) {
-    tmp_partition_leaves.emplace_back(tt_var);
-    add_set(tt_slp, tt_var);
-  };
-
+  bool flag = false;
   for (auto _ : t_state) {
-    slp_pts = grammar::Chunks<>();
-    tmp_partition_leaves.clear();
+    if (flag) {
+      slp_pts = grammar::Chunks<>(slp_leaves_pts);
+      nodes = partition_leaves_v;
+    }
 
-    auto[l, leaves, first_children, parents, next_leaves] = grammar::PartitionSLP(
-        slp, FLAGS_bs, predicate, leaf_action, add_set);
+    auto n_leaves = nodes.size();
 
-    partition = grammar::SLPPartition<>(l, leaves);
-    partition_tree = grammar::SLPPartitionTree<>(l, first_children, parents, next_leaves);
-    grammar::Construct(partition_leaves, tmp_partition_leaves);
-    sdsl::util::bit_compress(partition_leaves);
+    auto[first_children, parents, next_leaves] = grammar::ComputeSLPPartitionTree(
+        slp, FLAGS_bs, predicate, n_leaves, nodes, add_set);
+
+    partition_tree = grammar::SLPPartitionTree<>(n_leaves, first_children, parents, next_leaves);
+    flag = true;
   }
 
-  sdsl::store_to_cache(partition, grammar::KEY_SLP_PARTITION + suffix, *t_config);
   sdsl::store_to_cache(partition_tree, grammar::KEY_SLP_PARTITION_TREE + suffix, *t_config);
-  sdsl::store_to_cache(partition_leaves, grammar::KEY_SLP_PARTITION_VARS + suffix, *t_config);
-
   SerializeChunks(slp_pts, grammar::KEY_SLP_PTS, suffix, t_config);
 
   SetupCommonCounters(t_state);
-  t_state.counters["leaves"] = partition.size();
   t_state.counters["nodes"] = slp_pts.size();
-  t_state.counters["partition_pts"] = slp_pts.GetObjects().size();
+  t_state.counters["pts"] = slp_pts.GetObjects().size();
 };
 
 auto BM_BuildSLPPartitionCSequence = [](benchmark::State &t_state, auto *t_config) {
-  std::string suffix = "-" + std::to_string(FLAGS_bs) + "-" + std::to_string(FLAGS_sf);
+  std::string suffix = "_" + std::to_string(FLAGS_bs);
 
   grammar::SLP<> slp;
   {
@@ -139,7 +180,7 @@ auto BM_BuildSLPPartitionCSequence = [](benchmark::State &t_state, auto *t_confi
   }
 
   sdsl::int_vector<> partition_leaves;
-  sdsl::load_from_cache(partition_leaves, grammar::KEY_SLP_PARTITION_VARS + suffix, *t_config);
+  sdsl::load_from_cache(partition_leaves, grammar::KEY_SLP_PARTITION_LEAVES + suffix + "_iv", *t_config);
 
   auto get_length = [&slp](const auto &tt_var) { return slp.SpanLength(tt_var); };
 
@@ -156,11 +197,11 @@ auto BM_BuildSLPPartitionCSequence = [](benchmark::State &t_state, auto *t_confi
 
   SetupCommonCounters(t_state);
   t_state.counters["c_seq"] = c_seq.size();
-  t_state.counters["partition_c_seq"] = partition_c_seq.GetObjects().size();
+  t_state.counters["p_c_seq"] = partition_c_seq.GetObjects().size();
 };
 
 auto BM_BuildSLPPartitionRules = [](benchmark::State &t_state, auto *t_config) {
-  std::string suffix = "-" + std::to_string(FLAGS_bs);
+  std::string suffix = "_" + std::to_string(FLAGS_bs);
 
   grammar::SLP<> slp;
   {
@@ -204,7 +245,7 @@ auto BM_BuildSLPPartitionRules = [](benchmark::State &t_state, auto *t_config) {
 
   SetupCommonCounters(t_state);
   t_state.counters["rules"] = slp.Start();
-  t_state.counters["valid_rules"] = slp.Sigma() + rules.size() / 2;
+  t_state.counters["p_rules"] = slp.Sigma() + rules.size() / 2;
 };
 
 int main(int argc, char **argv) {
@@ -221,10 +262,15 @@ int main(int argc, char **argv) {
 
   sdsl::cache_config config(false, ".", sdsl::util::basename(FLAGS_data));
 
-  std::string suffix = "-" + std::to_string(FLAGS_bs) + "-" + std::to_string(FLAGS_sf);
+  std::string suffix_bs = "_" + std::to_string(FLAGS_bs);
+  std::string suffix = "_" + std::to_string(FLAGS_bs) + "_" + std::to_string(FLAGS_sf);
 
-  if (!cache_file_exists(grammar::KEY_SLP_PTS + "_obj_v" + suffix, config) || FLAGS_rebuild) {
+  if (!cache_file_exists(grammar::KEY_SLP_PARTITION + suffix_bs, config) || FLAGS_rebuild) {
     benchmark::RegisterBenchmark("BuildSLPPartition", BM_BuildSLPPartition, &config);
+  }
+
+  if (!cache_file_exists(grammar::KEY_SLP_PARTITION_TREE + suffix, config) || FLAGS_rebuild) {
+    benchmark::RegisterBenchmark("BuildSLPPartitionTree", BM_BuildSLPPartitionTree, &config);
   }
 
   if (!cache_file_exists(grammar::KEY_SLP_PARTITION_C_SEQ + "_obj_v" + suffix, config) || FLAGS_rebuild) {
