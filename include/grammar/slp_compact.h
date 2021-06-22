@@ -5,6 +5,11 @@
 #ifndef GRAMMAR_SLP_COMPACT_H_
 #define GRAMMAR_SLP_COMPACT_H_
 
+#include <vector>
+#include <unordered_map>
+#include <optional>
+#include <tuple>
+
 namespace grammar {
 
 template<typename TGetLeafId, typename TGetChildren, typename TVariable, typename TLeafAction, typename TPreAction, typename TPostAction>
