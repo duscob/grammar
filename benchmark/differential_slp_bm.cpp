@@ -4,8 +4,7 @@
 
 #include <iostream>
 #include <random>
-
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include <benchmark/benchmark.h>
 
@@ -13,10 +12,10 @@
 
 #include <sdsl/config.hpp>
 
-#include <grammar/slp.h>
-#include <grammar/re_pair.h>
-#include <grammar/slp_helper.h>
-#include <grammar/differential_slp.h>
+#include "grammar/slp.h"
+#include "grammar/re_pair.h"
+#include "grammar/slp_helper.h"
+#include "grammar/differential_slp.h"
 
 #include "../tool/definitions.h"
 
@@ -155,7 +154,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  boost::filesystem::path datafile = FLAGS_data;
+  std::filesystem::path datafile = FLAGS_data;
   auto base_name = datafile.stem();
 
   sdsl::cache_config config(false, ".", base_name.string());

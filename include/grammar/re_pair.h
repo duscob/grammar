@@ -281,8 +281,8 @@ class RePairReader<true> : public RePairBasicReader {
     auto handler = [&_complete, &_report_rule, this](int C[], std::size_t length) {
       auto max = *std::max_element(C, C + length);
 
-      auto
-          report = [&C, &length, max, &_report_rule, this](int id, int id_left_child, int id_right_child, auto height) {
+      auto report = [&C, &length, max, &_report_rule, this](
+          int id, int id_left_child, int id_right_child, auto height) {
         auto left = (id_left_child < length) ? C[id_left_child] : id_left_child - length + max + 1;
         auto right = (id_right_child < length) ? C[id_right_child] : id_right_child - length + max + 1;
 

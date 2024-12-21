@@ -1,6 +1,8 @@
 ########################################################################
 # CMake build script for Grammar Library.
 
+cmake_minimum_required(VERSION 3.10)
+
 option(grammar_build_tests "Build all of grammar's tests." ON)
 
 option(grammar_build_tools "Build all of grammar's tools." ON)
@@ -9,8 +11,6 @@ option(grammar_build_benchmarks "Build all of grammar's benchmarks." ON)
 
 option(grammar_install "Enable installation of grammar. (Projects embedding grammar may want to turn this OFF.)" ON)
 
-
-cmake_minimum_required(VERSION 3.0)
 
 
 ########################################################################
@@ -134,23 +134,21 @@ if (grammar_build_tests)
 endif ()
 
 
-find_package(Boost COMPONENTS filesystem system REQUIRED)
-
 if (grammar_build_tools)
-    cxx_executable_with_flags(build_dslp_span_sums "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_span_sums.cpp)
+    cxx_executable_with_flags(build_dslp_span_sums "" "${GFLAGS_LIB};grammar;${LIBS};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_span_sums.cpp)
 
-    cxx_executable_with_flags(build_dslp_samples "" "${GFLAGS_LIB};grammar;${LIBS};${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_samples.cpp)
+    cxx_executable_with_flags(build_dslp_samples "" "${GFLAGS_LIB};grammar;${LIBS};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_samples.cpp)
 endif ()
 
 
 if (grammar_build_benchmarks)
-    include(ConfigGBenchmark)
+    if (NOT TARGET benchmark)
+        include(ConfigGBenchmark)
+    endif ()
 
-    find_package(Boost COMPONENTS filesystem system REQUIRED)
+    cxx_executable_with_flags(chunks_bm "" "${GFLAGS_LIB};benchmark;grammar;" benchmark/chunks_bm.cpp)
 
-    cxx_executable_with_flags(chunks_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES}" benchmark/chunks_bm.cpp)
-
-    cxx_executable_with_flags(differential_slp_bm "" "${GFLAGS_LIB};benchmark;grammar;${Boost_LIBRARIES};${CMAKE_THREAD_LIBS_INIT}" benchmark/differential_slp_bm.cpp)
+    cxx_executable_with_flags(differential_slp_bm "" "${GFLAGS_LIB};benchmark;grammar;${CMAKE_THREAD_LIBS_INIT}" benchmark/differential_slp_bm.cpp)
 
     cxx_executable_with_flags(bm_build_compact_slp "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_build_compact_slp.cpp)
 

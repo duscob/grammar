@@ -6,8 +6,6 @@
 #include <random>
 #include <algorithm>
 
-#include <boost/filesystem.hpp>
-
 #include <benchmark/benchmark.h>
 
 #include <gflags/gflags.h>
