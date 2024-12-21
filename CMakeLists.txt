@@ -69,11 +69,10 @@ set(SOURCE_FILES include/grammar/re_pair.h
         include/grammar/differential_slp.h
         include/grammar/slp_partition.h)
 
-find_library(SDSL_LIB sdsl)
-find_library(DIVSUFSORT_LIB divsufsort)
-find_library(DIVSUFSORT64_LIB divsufsort64)
-
-set(LIBS ${SDSL_LIB} ${DIVSUFSORT_LIB} ${DIVSUFSORT64_LIB})
+find_package(sdsl 3.0)
+if (NOT sdsl_FOUND)
+    include(ConfigSDSL)
+endif ()
 
 add_library(grammar ${SOURCE_FILES})
 target_link_libraries(grammar ${LIBS})
