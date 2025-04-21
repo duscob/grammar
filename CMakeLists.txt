@@ -108,6 +108,11 @@ endif ()
 include(cmake/internal_utils.cmake)
 
 find_library(GFLAGS_LIB gflags)
+if (NOT GFLAGS_LIB)
+    include(ConfigGFlags)
+    set(GFLAGS_LIB gflags::gflags)
+endif ()
+
 find_package(Threads)
 
 if (grammar_build_tests)
