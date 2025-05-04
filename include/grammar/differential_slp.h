@@ -5,6 +5,12 @@
 #ifndef GRAMMAR_DIFFERENTIAL_SLP_H_
 #define GRAMMAR_DIFFERENTIAL_SLP_H_
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
+#include <vector>
+
 #include <sdsl/bit_vectors.hpp>
 
 #include <grammar/slp.h>

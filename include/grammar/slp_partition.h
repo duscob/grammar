@@ -6,6 +6,7 @@
 #define GRAMMAR_SLP_PARTITION_H_
 
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 #include <vector>
 #include <map>

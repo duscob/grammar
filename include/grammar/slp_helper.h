@@ -5,6 +5,7 @@
 #ifndef GRAMMAR_CONSTRUCT_SLP_H
 #define GRAMMAR_CONSTRUCT_SLP_H
 
+#include <cstddef>
 #include <cstdint>
 #include <utility>
 #include <vector>

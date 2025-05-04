@@ -5,6 +5,7 @@
 #ifndef GRAMMAR_SLP_INTERFACE_H
 #define GRAMMAR_SLP_INTERFACE_H
 
+#include <cstddef>
 #include <vector>
 #include <utility>
 

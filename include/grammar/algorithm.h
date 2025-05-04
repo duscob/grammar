@@ -5,9 +5,11 @@
 #ifndef GRAMMAR_COMPLETE_TREE_H
 #define GRAMMAR_COMPLETE_TREE_H
 
-#include <vector>
 #include <algorithm>
-
+#include <cstddef>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 namespace grammar {
 
