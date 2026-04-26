@@ -290,7 +290,11 @@ class SampledPTS {
   }
 
   std::vector<_ValueType> operator[](_ValueType i) const {
-    std::vector<bool> _visited(i, false);
+    // _visited needs at least i+1 slots: GetSet unconditionally writes
+    // _visited[i] = 1 before returning. With size i (indices 0..i-1) the
+    // write is OOB; debug libstdc++ asserts at stl_bvector.h, release
+    // builds silently corrupt the bit past the end of the bitfield.
+    std::vector<bool> _visited(i + 1, false);
     return GetSet(i, _visited);
   }
 
