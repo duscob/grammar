@@ -2,6 +2,8 @@
 // Created by Dustin Cobas Batista <dustin.cobas@gmail.com> on 7/17/18.
 //
 
+#include <cstdio>
+
 #include <gtest/gtest.h>
 
 #include <sdsl/vectors.hpp>
@@ -149,6 +151,8 @@ TYPED_TEST(SLPMDGeneric_TF, Serialization) {
     pts_loaded.load(in);
   }
   EXPECT_TRUE(pts == pts_loaded);
+
+  std::remove("tmp.slp_metadata");
 }
 
 
@@ -186,6 +190,8 @@ TEST_P(Chunks_TF, InsertAndAccess) {
     chunks_loaded.load(in);
   }
   EXPECT_TRUE(chunks == chunks_loaded);
+
+  std::remove("tmp.slp_metadata");
 }
 
 
@@ -239,6 +245,8 @@ TEST_P(Chunks_TF, Serialization) {
     chunks_loaded.load(in);
   }
   EXPECT_TRUE(chunks == chunks_loaded);
+
+  std::remove("tmp.slp_metadata");
 }
 
 
@@ -314,6 +322,8 @@ TEST_P(Chunks_TF, GrammarCompressedChunkSerialization) {
     compact_chunks_loaded.load(in);
   }
   EXPECT_TRUE(gcchunks == compact_chunks_loaded);
+
+  std::remove("tmp.slp_metadata");
 }
 
 
@@ -408,6 +418,8 @@ TEST_P(GCChunksTV_TF, Serialization) {
     gc_chunks_loaded.load(in);
   }
   EXPECT_TRUE(gcchunkstv == gc_chunks_loaded);
+
+  std::remove("tmp.slp_metadata");
 }
 
 

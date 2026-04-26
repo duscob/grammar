@@ -3,6 +3,8 @@
 //
 
 
+#include <cstdio>
+
 #include <gtest/gtest.h>
 #include <memory>
 
@@ -288,6 +290,8 @@ TYPED_TEST(SLPGenericConstruct_TF, Serialize) {
     in.close();
   }
   EXPECT_TRUE(slp == slp_loaded);
+
+  std::remove("tmp.slp");
 }
 
 

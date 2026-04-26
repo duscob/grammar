@@ -2,6 +2,8 @@
 // Created by Dustin Cobas Batista <dustin.cobas@gmail.com> on 7/26/18.
 //
 
+#include <cstdio>
+
 #include <gtest/gtest.h>
 
 #include <sdsl/sd_vector.hpp>
@@ -534,6 +536,8 @@ TEST_P(SampledSLPParent_TF, Serialization) {
     sslp_loaded.load(in);
   }
   EXPECT_TRUE(sslp == sslp_loaded);
+
+  std::remove("tmp.sampled_slp");
 }
 
 
@@ -561,6 +565,8 @@ TEST_P(SampledSLPParent_TF, SLPPartitionSerialization) {
     slp_partition_loaded.load(in);
   }
   EXPECT_TRUE(slp_partition == slp_partition_loaded);
+
+  std::remove("tmp.slp_partition");
 }
 
 TEST_P(SampledSLPParent_TF, SLPPartitionMoveConstructor) {
@@ -604,6 +610,8 @@ TEST_P(SampledSLPParent_TF, SLPPartitionTreeSerialization) {
     slp_partition_tree_loaded.load(in);
   }
   EXPECT_TRUE(slp_partition_tree == slp_partition_tree_loaded);
+
+  std::remove("tmp.slp_partition");
 }
 
 TEST_P(SampledSLPParent_TF, SLPPartitionTreeMoveConstructor) {
