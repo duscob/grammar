@@ -62,6 +62,31 @@ class SampledSLP {
 
   SampledSLP() = default;
 
+  // The implicitly-generated copy assignment shallow-copies b_l_rank, b_l_select
+  // and b_f_rank — these SDSL support objects retain their internal pointers to
+  // the SOURCE's b_l/b_f bitvectors. Once the source dies (or its bitvectors
+  // change) the destination's supports dangle. The user-defined copy assignment
+  // below copies the data members and re-binds the supports against *this.
+  // The matching copy constructor delegates to operator=.
+  //
+  // This fix is also load-bearing for LightSLP::Compute, which copy-assigns a
+  // stack-local CombinedSLP's SampledSLP base into the LightSLP being built.
+  SampledSLP(const SampledSLP &other) { *this = other; }
+
+  SampledSLP &operator=(const SampledSLP &other) {
+    if (this != &other) {
+      l   = other.l;
+      b_l = other.b_l;
+      b_f = other.b_f;
+      f   = other.f;
+      n   = other.n;
+      sdsl::util::init_support(b_l_rank,   &b_l);
+      sdsl::util::init_support(b_l_select, &b_l);
+      sdsl::util::init_support(b_f_rank,   &b_f);
+    }
+    return *this;
+  }
+
   template<typename _SLP, typename _LeafAction, typename _NodeAction, typename _Predicate>
   SampledSLP(const _SLP &_slp,
              uint32_t _block_size,

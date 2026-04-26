@@ -425,6 +425,94 @@ TEST_P(SampledSLPParent_TF, CombinedSLPFirstChildAndParent) {
 }
 
 
+// Regression test for the dangling-supports bug in SampledSLP's implicitly-
+// generated copy assignment. Before SampledSLP got a user-defined operator=,
+// b_l_rank/b_l_select/b_f_rank in the destination would still point at the
+// SOURCE's b_l/b_f bitvectors, so any query after the source died (or its
+// bitvectors changed) read freed memory.
+//
+// The test assigns from a CombinedSLP's SampledSLP base, lets the source go
+// out of scope, and queries IsFirstChild/Parent on the destination against the
+// same expectations used by CombinedSLPFirstChildAndParent above.
+TEST_P(SampledSLPParent_TF, CopyAssignSampledBaseAfterSourceDies) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  grammar::SampledSLP<> dst;
+
+  {
+    grammar::CombinedSLP<> cslp;
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    cslp.Reset(sigma);
+    for (auto &&rule : rules) {
+      cslp.AddRule(rule.first, rule.second);
+    }
+
+    grammar::Chunks<> pts;
+    grammar::AddSet<grammar::Chunks<>> add_set(pts);
+    cslp.Compute(block_size,
+                 add_set,
+                 add_set,
+                 grammar::MustBeSampled<grammar::Chunks<>>(
+                     grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor)));
+
+    dst = static_cast<const grammar::SampledSLP<> &>(cslp);
+  }
+  // cslp is destroyed here; if dst's supports still pointed at cslp.b_l/b_f
+  // the queries below would read freed memory.
+
+  const auto &pos = std::get<4>(GetParam());
+  const auto &e_res = std::get<5>(GetParam());
+
+  for (size_t i = 0; i < pos.size(); ++i) {
+    EXPECT_TRUE(dst.IsFirstChild(pos[i]));
+    EXPECT_EQ(dst.Parent(pos[i]), e_res[i]);
+  }
+}
+
+// Same as above but exercises the matching copy constructor (which delegates
+// to operator=, but a separate test catches the case where someone changes
+// the constructor without re-checking the assignment path).
+TEST_P(SampledSLPParent_TF, CopyConstructSampledBaseAfterSourceDies) {
+  auto block_size = std::get<2>(GetParam());
+  auto storing_factor = std::get<3>(GetParam());
+
+  auto build_dst = [&]() {
+    grammar::CombinedSLP<> cslp;
+    auto &sigma = std::get<0>(GetParam());
+    auto &rules = std::get<1>(GetParam());
+
+    cslp.Reset(sigma);
+    for (auto &&rule : rules) {
+      cslp.AddRule(rule.first, rule.second);
+    }
+
+    grammar::Chunks<> pts;
+    grammar::AddSet<grammar::Chunks<>> add_set(pts);
+    cslp.Compute(block_size,
+                 add_set,
+                 add_set,
+                 grammar::MustBeSampled<grammar::Chunks<>>(
+                     grammar::AreChildrenTooBig<grammar::Chunks<>>(pts, storing_factor)));
+
+    return grammar::SampledSLP<>(static_cast<const grammar::SampledSLP<> &>(cslp));
+  };
+
+  grammar::SampledSLP<> dst = build_dst();
+  // The CombinedSLP built inside build_dst is destroyed by the time we query.
+
+  const auto &pos = std::get<4>(GetParam());
+  const auto &e_res = std::get<5>(GetParam());
+
+  for (size_t i = 0; i < pos.size(); ++i) {
+    EXPECT_TRUE(dst.IsFirstChild(pos[i]));
+    EXPECT_EQ(dst.Parent(pos[i]), e_res[i]);
+  }
+}
+
+
 TEST_P(SampledSLPParent_TF, Serialization) {
   auto block_size = std::get<2>(GetParam());
   auto storing_factor = std::get<3>(GetParam());
