@@ -53,13 +53,13 @@ auto CreateCompactGrammarForest(const TRoots &t_roots, const TSigma &t_sigma, TG
   std::vector<std::size_t> leaves;
   std::unordered_map<std::size_t, std::size_t> nt_id;
 
-  auto get_leaf_id = [&t_sigma, &nt_id](const auto &tt_var) -> std::optional<int> {
+  auto get_leaf_id = [&t_sigma, &nt_id](const auto &tt_var) -> std::optional<std::size_t> {
     if (tt_var <= t_sigma) {
       return tt_var;
     }
 
     auto iter = nt_id.find(tt_var);
-    return iter != nt_id.end() ? std::optional<int>{iter->second} : std::nullopt;
+    return iter != nt_id.end() ? std::optional<std::size_t>{iter->second} : std::nullopt;
   };
 
   auto leaf_action = [&tree, &leaves](const auto &tt_var, const auto &tt_leaf_id) {
@@ -86,15 +86,15 @@ template<typename TRoots, typename TSigma, typename TGetChildren>
 auto CreateCompactGrammarTreeWithBP(const TRoots &t_roots, const TSigma &t_sigma, TGetChildren &t_get_children) {
   std::vector<bool> tree;
   std::vector<std::size_t> leaves;
-  std::unordered_map<int, int> nt_id;
+  std::unordered_map<std::size_t, std::size_t> nt_id;
 
-  auto get_leaf_id = [&t_sigma, &nt_id](const auto &tt_var) -> std::optional<int> {
+  auto get_leaf_id = [&t_sigma, &nt_id](const auto &tt_var) -> std::optional<std::size_t> {
     if (tt_var <= t_sigma) {
       return tt_var;
     }
 
     auto iter = nt_id.find(tt_var);
-    return iter != nt_id.end() ? std::optional<int>{iter->second} : std::nullopt;
+    return iter != nt_id.end() ? std::optional<std::size_t>{iter->second} : std::nullopt;
   };
 
   auto leaf_action = [&tree, &leaves](const auto &tt_var, const auto &tt_leaf_id) {
