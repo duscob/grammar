@@ -137,6 +137,8 @@ if (grammar_build_tests)
     cxx_test_with_flags_and_args(slp_compact_test "" "gtest;gtest_main;${LIBS};grammar" "" test/slp_compact_test.cpp)
 
     cxx_test_with_flags_and_args(compact_bp_slp_test "" "gtest;gtest_main;${LIBS};grammar" "" test/compact_bp_slp_test.cpp)
+
+    cxx_test_with_flags_and_args(compact_louds_slp_test "" "gtest;gtest_main;${LIBS};grammar" "" test/compact_louds_slp_test.cpp)
 endif ()
 
 
