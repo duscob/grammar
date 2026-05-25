@@ -202,6 +202,21 @@ class CombinedSLP : public _SLP, public _SampledSLP {
 
   CombinedSLP(const _SLP &_slp) : _SLP(_slp) {}
 
+  // Converting constructor: copy/convert from another CombinedSLP with different
+  // containers, applying actions (e.g. sdsl::util::bit_compress) to the SLP rules,
+  // the SLP lengths, and the leaves. Mirrors LightSLP's converting constructor so a
+  // std::vector-built CSLP can be re-encoded into bit-compressed containers.
+  template<typename __SLP, typename __SampledSLP, typename __LeavesContainer,
+      typename __SLPAct1 = NoAction, typename __SLPAct2 = NoAction, typename __LeafAct = NoAction>
+  CombinedSLP(const CombinedSLP<__SLP, __SampledSLP, __LeavesContainer> &_cslp,
+              __SLPAct1 &&_slp_act1 = NoAction(),
+              __SLPAct2 &&_slp_act2 = NoAction(),
+              __LeafAct &&_leaf_act = NoAction())
+      : _SLP(_cslp, _slp_act1, _slp_act2), _SampledSLP(_cslp) {
+    Construct(leaves_, _cslp.GetLeaves());
+    _leaf_act(leaves_);
+  }
+
   template<typename _LeafAction, typename _NodeAction, typename _Predicate>
   void Compute(uint32_t _block_size, _LeafAction &&_leaf_action, _NodeAction &&_node_action, const _Predicate &_pred) {
     auto leaf_action = [this, &_leaf_action](const auto &_slp, auto _curr_var) {
