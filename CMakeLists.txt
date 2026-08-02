@@ -107,11 +107,7 @@ endif ()
 # Define helper functions and macros used.
 include(cmake/internal_utils.cmake)
 
-find_library(GFLAGS_LIB gflags)
-if (NOT GFLAGS_LIB)
-    include(ConfigGFlags)
-    set(GFLAGS_LIB gflags::gflags)
-endif ()
+include(ConfigGFlags)
 
 find_package(Threads)
 
@@ -122,7 +118,7 @@ if (grammar_build_tests)
 
     cxx_test_with_flags_and_args(complete_tree_test "" "gtest;gtest_main;grammar" "" test/complete_tree_test.cpp)
 
-    cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;${GFLAGS_LIB};grammar" "--datapath=${CMAKE_SOURCE_DIR}/test/data" test/re_pair_test.cpp)
+    cxx_test_with_flags_and_args(re_pair_test "" "gtest;gtest_main;gflags::gflags;grammar" "--datapath=${CMAKE_SOURCE_DIR}/test/data" test/re_pair_test.cpp)
 
     cxx_test_with_flags_and_args(slp_test "" "gtest;gtest_main;grammar" "" test/slp_test.cpp)
 
@@ -145,9 +141,9 @@ endif ()
 
 
 if (grammar_build_tools)
-    cxx_executable_with_flags(build_dslp_span_sums "" "${GFLAGS_LIB};grammar;${LIBS};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_span_sums.cpp)
+    cxx_executable_with_flags(build_dslp_span_sums "" "gflags::gflags;grammar;${LIBS};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_span_sums.cpp)
 
-    cxx_executable_with_flags(build_dslp_samples "" "${GFLAGS_LIB};grammar;${LIBS};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_samples.cpp)
+    cxx_executable_with_flags(build_dslp_samples "" "gflags::gflags;grammar;${LIBS};${CMAKE_THREAD_LIBS_INIT}" tool/build_dslp_samples.cpp)
 endif ()
 
 
@@ -156,13 +152,13 @@ if (grammar_build_benchmarks)
         include(ConfigGBenchmark)
     endif ()
 
-    cxx_executable_with_flags(chunks_bm "" "${GFLAGS_LIB};benchmark;grammar;" benchmark/chunks_bm.cpp)
+    cxx_executable_with_flags(chunks_bm "" "gflags::gflags;benchmark;grammar;" benchmark/chunks_bm.cpp)
 
-    cxx_executable_with_flags(differential_slp_bm "" "${GFLAGS_LIB};benchmark;grammar;${CMAKE_THREAD_LIBS_INIT}" benchmark/differential_slp_bm.cpp)
+    cxx_executable_with_flags(differential_slp_bm "" "gflags::gflags;benchmark;grammar;${CMAKE_THREAD_LIBS_INIT}" benchmark/differential_slp_bm.cpp)
 
-    cxx_executable_with_flags(bm_build_compact_slp "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_build_compact_slp.cpp)
+    cxx_executable_with_flags(bm_build_compact_slp "" "gflags::gflags;benchmark;grammar" benchmark/bm_build_compact_slp.cpp)
 
-    cxx_executable_with_flags(bm_expand_slp "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_expand_slp.cpp)
+    cxx_executable_with_flags(bm_expand_slp "" "gflags::gflags;benchmark;grammar" benchmark/bm_expand_slp.cpp)
 
-    cxx_executable_with_flags(bm_build_slp_partition "" "${GFLAGS_LIB};benchmark;grammar" benchmark/bm_build_slp_partition.cpp)
+    cxx_executable_with_flags(bm_build_slp_partition "" "gflags::gflags;benchmark;grammar" benchmark/bm_build_slp_partition.cpp)
 endif ()
